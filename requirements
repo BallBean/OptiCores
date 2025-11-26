@@ -1,0 +1,6 @@
+psutil
+customtkinter
+GPUtil
+Pillow
+matplotlib
+pywin32
