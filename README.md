@@ -22,9 +22,6 @@ OptiCores เป็นแอปสำหรับ Windows ที่ช่วย�
   - ปรับ **Memory Priority** (VeryLow–High)
   - สั่ง **Trim RAM** (ใช้ `EmptyWorkingSet`) เพื่อลด working set ของโปรเซส
   - ตั้งค่า **CPU Affinity**:
-    - All cores  
-    - Half cores (even / odd)  
-    - First 2 cores
   - สั่ง **Suspend / Resume / Kill** โปรเซส
   - ปุ่ม **Revert Changes** เพื่อย้อนกลับ Priority / Memory priority / Affinity ที่ OptiCores เคยเปลี่ยนให้
   - แสดง **Effects Panel** วัดก่อน-หลัง (ΔCPU, ΔRAM) ทุกครั้งที่กด action
