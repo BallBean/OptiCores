@@ -27,7 +27,7 @@ OptiCores เป็นแอปสำหรับ Windows ที่ช่วย�
     - First 2 cores
   - สั่ง **Suspend / Resume / Kill** โปรเซส
   - ปุ่ม **Revert Changes** เพื่อย้อนกลับ Priority / Memory priority / Affinity ที่ OptiCores เคยเปลี่ยนให้
-  - แสดง **Effects Panel** วัดก่อน–หลัง (ΔCPU, ΔRAM) ทุกครั้งที่กด action
+  - แสดง **Effects Panel** วัดก่อน-หลัง (ΔCPU, ΔRAM) ทุกครั้งที่กด action
 
 - **Game Mode & Background Governor**
   - **Game Mode**
@@ -39,9 +39,9 @@ OptiCores เป็นแอปสำหรับ Windows ที่ช่วย�
     - ใช้ Windows Job Object (ถ้ามี `win32job`)
 
 - **Profiles**
-  - `Gaming` – เน้น High Performance, เปิด Game Mode + Governor
-  - `Creator` – เน้นงานตัดต่อ/render, Balanced plan + Governor
-  - `Everyday` – ใช้งานทั่วไป, Balanced plan, ไม่บีบ background เยอะ
+  - `Gaming` เน้น High Performance, เปิด Game Mode + Governor
+  - `Creator` เน้นงานตัดต่อ/render, Balanced plan + Governor
+  - `Everyday` ใช้งานทั่วไป, Balanced plan, ไม่บีบ background เยอะ
 
 - **Startup Manager**
   - อ่านค่า startup จาก:
