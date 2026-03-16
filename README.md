@@ -2,8 +2,6 @@
 
 **OptiCores** is the Ultimate CPU and Priority Optimizer built for Windows. It provides a suite of advanced tools to manage background tasks, free up RAM, optimize gaming performance, and keep your system running at peak efficiency through a beautifully designed, modern UI.
 
-![OptiCores Screenshot](https://via.placeholder.com/800x450.png?text=OptiCores+Dashboard)
-
 ## Key Features
 
 OptiCores is divided into specialized modules accessible from the sidebar. Here is an overview of what each tab can do for your system:
@@ -70,7 +68,7 @@ Your built-in PC guru. Ask questions in natural language about how to optimize y
 
 ## Installation
 
-1. Download the latest `OptiCores_Setup.exe` from the [Releases](#) page.
+1. Download the `OptiCores_Setup.exe`.
 2. Run the installer and follow the Setup Wizard.
 3. Launch OptiCores! 
 
