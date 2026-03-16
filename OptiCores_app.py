@@ -58,7 +58,6 @@ DEFAULT_THRESH = {"bg_cpu": 30.0, "heavy_ram_mb": 800.0}
 DEFAULT_REFRESH_SEC = 5.0
 
 class DesignTokens:
-    """Centralized design system for OptiCores UI consistency"""
 
     SPACING_UNIT = 8
 
@@ -124,7 +123,6 @@ class DesignTokens:
 
     @classmethod
     def get_status_color(cls, value, thresholds=(60, 85)):
-        """Return color based on percentage value (green/amber/red)"""
         low, high = thresholds
         if value < low:
             return cls.SUCCESS
@@ -178,7 +176,6 @@ IO_PRIORITY = {
 IO_PRIORITY_KEYS = list(IO_PRIORITY.keys())
 
 def set_io_priority(handle, level: int):
-    """Set I/O priority for a process (0=VeryLow, 1=Low, 2=Normal, 3=High)"""
     try:
         info = PROCESS_IO_PRIORITY_INFORMATION(level)
         ok = kernel32.SetProcessInformation(
@@ -191,7 +188,6 @@ def set_io_priority(handle, level: int):
         return False
 
 def get_io_priority(handle):
-    """Get I/O priority for a process"""
     try:
         info = PROCESS_IO_PRIORITY_INFORMATION()
         ok = kernel32.GetProcessInformation(
@@ -206,7 +202,6 @@ def get_io_priority(handle):
 winmm = ctypes.WinDLL("winmm", use_last_error=True)
 
 def set_timer_resolution(ms=1):
-    """Set system timer resolution (1ms for gaming, 15 for normal)"""
     try:
         winmm.timeBeginPeriod(ms)
         return True
@@ -214,7 +209,6 @@ def set_timer_resolution(ms=1):
         return False
 
 def reset_timer_resolution(ms=1):
-    """Reset timer resolution to default"""
     try:
         winmm.timeEndPeriod(ms)
         return True
@@ -222,7 +216,6 @@ def reset_timer_resolution(ms=1):
         return False
 
 def control_sysmain_service(enable: bool):
-    """Enable/Disable SysMain (Superfetch) service"""
     try:
         action = "start" if enable else "stop"
         subprocess.run(
@@ -234,7 +227,6 @@ def control_sysmain_service(enable: bool):
         return False
 
 def set_cpu_parking(enabled: bool):
-    """Enable/Disable CPU core parking"""
     try:
         value = "0" if enabled else "100"
         subprocess.run([
@@ -248,7 +240,6 @@ def set_cpu_parking(enabled: bool):
         return False
 
 def boost_foreground_priority_registry():
-    """Apply Win32PrioritySeparation tweak for foreground boost"""
     try:
         if winreg:
             key = winreg.OpenKey(
@@ -264,7 +255,6 @@ def boost_foreground_priority_registry():
     return False
 
 def set_affinity_physical_cores_only(handle, core_count):
-    """Set CPU affinity to physical cores only (disable HT/SMT for this process)"""
     try:
         physical_mask = 0
         for i in range(0, core_count, 2):
@@ -275,7 +265,6 @@ def set_affinity_physical_cores_only(handle, core_count):
         return False
 
 def set_affinity_performance_cores(handle, p_core_count):
-    """Set affinity to performance cores only (Intel hybrid CPUs)"""
     try:
         p_core_mask = (1 << p_core_count) - 1
         win32process.SetProcessAffinityMask(handle, p_core_mask)
@@ -306,7 +295,6 @@ class DynamicPriorityBalancer:
         }
 
     def check_and_rebalance(self, fpid):
-        """Main PRIORITY_BALANCER loop - called from background thread"""
         if not self.enabled:
             return
 
@@ -410,7 +398,6 @@ class DynamicPriorityBalancer:
             pass
 
     def _lower_priority(self, pid, name, now):
-        """Lower a process priority to Below Normal"""
         try:
             h = open_proc(pid, win32con.PROCESS_QUERY_INFORMATION | win32con.PROCESS_SET_INFORMATION)
             if not h:
@@ -446,7 +433,6 @@ class DynamicPriorityBalancer:
             pass
 
     def _escalate_priority(self, pid):
-        """Escalate from Below Normal to Idle for extremely high load"""
         try:
             h = open_proc(pid, win32con.PROCESS_SET_INFORMATION)
             if h:
@@ -470,7 +456,6 @@ class DynamicPriorityBalancer:
             pass
 
     def _step_restore_priority(self, pid, target_priority, new_level):
-        """Restore priority one step (for gradual restoration)"""
         try:
             h = open_proc(pid, win32con.PROCESS_SET_INFORMATION)
             if h:
@@ -484,7 +469,6 @@ class DynamicPriorityBalancer:
             pass
 
     def _full_restore_priority(self, pid):
-        """Fully restore a process to its original priority"""
         try:
             info = self.lowered[pid]
             h = open_proc(pid, win32con.PROCESS_SET_INFORMATION)
@@ -500,7 +484,6 @@ class DynamicPriorityBalancer:
                 del self.lowered[pid]
 
     def get_stats(self):
-        """Return current PRIORITY_BALANCER stats for UI"""
         return {
             'enabled': self.enabled,
             'lowered_count': len(self.lowered),
@@ -513,7 +496,6 @@ class DynamicPriorityBalancer:
 PRIORITY_BALANCER = DynamicPriorityBalancer()
 
 class POWER_SAVER:
-    """Intelligent power management based on system activity"""
 
     POWER_PLANS = {
         'HIGH_PERFORMANCE': '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c',
@@ -536,7 +518,6 @@ class POWER_SAVER:
         self._detect_current_plan()
 
     def _detect_current_plan(self):
-        """Detect the currently active power plan"""
         try:
             result = subprocess.run(
                 ['powercfg', '/getactivescheme'],
@@ -554,7 +535,6 @@ class POWER_SAVER:
         self.original_plan = 'BALANCED'
 
     def _set_power_plan(self, plan_name):
-        """Set power plan by name using GUID"""
         guid = self.POWER_PLANS.get(plan_name)
         if not guid:
             return False
@@ -569,7 +549,6 @@ class POWER_SAVER:
             return False
 
     def _check_battery(self):
-        """Check if on battery power"""
         try:
             battery = psutil.sensors_battery()
             if battery:
@@ -621,7 +600,6 @@ class POWER_SAVER:
             pass
 
     def restore(self):
-        """Restore original power plan"""
         if self.original_plan:
             self._set_power_plan(self.original_plan)
         self.was_idle = False
@@ -641,7 +619,6 @@ class POWER_SAVER:
 POWER_SAVER = POWER_SAVER()
 
 class AffinityManager:
-    """Advanced CPU affinity manager with topology detection"""
 
     def __init__(self):
         self.enabled = True
@@ -653,7 +630,6 @@ class AffinityManager:
         self.presets = self._generate_presets()
 
     def _detect_cpu_topology(self):
-        """Detect CPU topology (Intel hybrid, AMD CCD, etc.)"""
         info = {
             'vendor': 'unknown',
             'total_cores': psutil.cpu_count(logical=False) or 4,
@@ -720,7 +696,6 @@ class AffinityManager:
         return info
 
     def _generate_presets(self):
-        """Generate affinity presets based on detected topology"""
         total_threads = self.cpu_info['total_threads']
         total_cores = self.cpu_info['total_cores']
 
@@ -757,17 +732,6 @@ class AffinityManager:
 
     def add_rule(self, process_name, affinity_mask=None, priority=None, delay_ms=0,
                  io_priority=None, mem_priority=None, preset=None):
-        """Add a persistent rule for a process
-
-        Args:
-            process_name: Name or partial name to match
-            affinity_mask: CPU affinity mask (bitmask of allowed cores)
-            priority: CPU priority class
-            delay_ms: Delay before applying rule
-            io_priority: I/O priority (0-3)
-            mem_priority: Memory priority (1-5)
-            preset: Use a preset ('p_cores_only', 'physical_only', etc.)
-        """
         mask = affinity_mask
         if preset and preset in self.presets:
             mask = self.presets[preset]
@@ -863,14 +827,12 @@ class AffinityManager:
             pass
 
     def get_preset(self, name):
-        """Get a preset affinity mask by name"""
         return self.presets.get(name)
 
     def get_rules(self):
         return dict(self.rules)
 
     def get_cpu_info(self):
-        """Return detected CPU topology"""
         return dict(self.cpu_info)
 
     def get_stats(self):
@@ -885,7 +847,6 @@ class AffinityManager:
 AFFINITY_MGR = AffinityManager()
 
 class MEM_OPTIMIZER:
-    """Advanced memory optimizer with ISLC-style standby list clearing"""
 
     SystemMemoryListInformation = 80
     MemoryEmptyWorkingSets = 0
@@ -1116,7 +1077,6 @@ class MEM_OPTIMIZER:
 MEM_OPTIMIZER = MEM_OPTIMIZER()
 
 class CPU_LIMITER:
-    """Advanced CPU limiter using Windows Job Objects for real CPU rate control"""
 
     JOB_OBJECT_CPU_RATE_CONTROL_ENABLE = 0x1
     JOB_OBJECT_CPU_RATE_CONTROL_WEIGHT_BASED = 0x2
@@ -1144,7 +1104,6 @@ class CPU_LIMITER:
         }
 
     def add_rule(self, process_name, threshold=80.0, limit_percent=50):
-        """Add a per-process CPU limit rule (limit_percent = max CPU %)"""
         self.rules[process_name.lower()] = {
             'threshold': threshold,
             'limit_percent': limit_percent
@@ -1204,7 +1163,6 @@ class CPU_LIMITER:
             pass
 
     def _limit(self, pid, name, limit_percent, core_count):
-        """Apply CPU limit using Job Objects (preferred) or affinity (fallback)"""
         if self.use_job_objects:
             success = self._limit_with_job_object(pid, name, limit_percent)
             if success:
@@ -1213,7 +1171,6 @@ class CPU_LIMITER:
         self._limit_with_affinity(pid, name, limit_percent, core_count)
 
     def _limit_with_job_object(self, pid, name, limit_percent):
-        """Use Job Object CPU rate control for real percentage limiting"""
         try:
             job_name = f"OptiCores_CPULimit_{pid}"
             job = win32job.CreateJobObject(None, job_name)
@@ -1259,7 +1216,6 @@ class CPU_LIMITER:
             return False
 
     def _limit_with_affinity(self, pid, name, limit_percent, core_count):
-        """Fallback: use CPU affinity to limit (less precise)"""
         try:
             h = open_proc(pid, win32con.PROCESS_SET_INFORMATION | win32con.PROCESS_QUERY_INFORMATION)
             if not h:
@@ -1289,7 +1245,6 @@ class CPU_LIMITER:
             pass
 
     def _cleanup_job(self, pid):
-        """Clean up job object for a process"""
         if pid in self.jobs:
             try:
                 win32api.CloseHandle(self.jobs[pid])
@@ -1298,7 +1253,6 @@ class CPU_LIMITER:
             del self.jobs[pid]
 
     def _restore(self, pid):
-        """Restore original CPU settings"""
         if pid not in self.limited:
             return
 
@@ -1336,7 +1290,6 @@ class CPU_LIMITER:
 CPU_LIMITER = CPU_LIMITER()
 
 class ResponsivenessMonitor:
-    """Advanced system responsiveness measurement"""
 
     def __init__(self):
         self.samples = deque(maxlen=120)
@@ -1355,7 +1308,6 @@ class ResponsivenessMonitor:
         self.disk_samples = deque(maxlen=60)
 
     def measure(self):
-        """Measure system responsiveness using multiple metrics"""
         now = time.time()
         if now - self.last_measure < self.measure_interval:
             return self.current_score
@@ -1422,7 +1374,6 @@ class ResponsivenessMonitor:
             return self.current_score
 
     def get_trend(self):
-        """Get responsiveness trend over time"""
         if len(self.samples) < 10:
             return 'stable'
 
@@ -1440,7 +1391,6 @@ class ResponsivenessMonitor:
         return 'stable'
 
     def get_grade(self):
-        """Get letter grade for current responsiveness"""
         if self.current_score >= 90:
             return 'A'
         elif self.current_score >= 80:
@@ -1469,15 +1419,6 @@ class ResponsivenessMonitor:
 RESPONSIVENESS = ResponsivenessMonitor()
 
 class LatencyMonitor:
-    """
-    Latency Metrics Monitor - Context Switch and DPC Latency Tracking
-
-    Similar to LatencyMon functionality:
-    - Tracks system interrupt latency (DPC/ISR)
-    - Monitors context switch rates
-    - Detects latency spikes that could cause audio glitches
-    - Provides trend analysis for system responsiveness
-    """
 
     def __init__(self):
         self.enabled = False
@@ -1507,7 +1448,6 @@ class LatencyMonitor:
         self._setup_perf_counters()
 
     def _setup_perf_counters(self):
-        """Setup Windows performance counter access"""
         try:
             class SYSTEM_PERFORMANCE_INFORMATION(ctypes.Structure):
                 _fields_ = [
@@ -1593,7 +1533,6 @@ class LatencyMonitor:
             self._perf_info = None
 
     def start(self):
-        """Start latency monitoring"""
         self.enabled = True
         self._stop_event.clear()
 
@@ -1612,12 +1551,10 @@ class LatencyMonitor:
         self._monitor_thread.start()
 
     def stop(self):
-        """Stop latency monitoring"""
         self.enabled = False
         self._stop_event.set()
 
     def _sample(self):
-        """Take a latency sample"""
         now = time.time()
         self.total_samples += 1
 
@@ -1653,7 +1590,6 @@ class LatencyMonitor:
             self.max_isr_latency_us = isr_latency
 
     def _get_context_switches(self):
-        """Get system-wide context switch count"""
         if self._perf_info:
             try:
                 info = self._perf_info()
@@ -1678,7 +1614,6 @@ class LatencyMonitor:
             return 0
 
     def _measure_dpc_latency(self):
-        """Measure DPC latency using high-precision timer jitter"""
         try:
             samples = []
             for _ in range(10):
@@ -1695,7 +1630,6 @@ class LatencyMonitor:
             return 0
 
     def _measure_isr_latency(self):
-        """Estimate ISR latency from timer resolution"""
         try:
             samples = []
             for _ in range(5):
@@ -1708,7 +1642,6 @@ class LatencyMonitor:
             return 0
 
     def get_grade(self):
-        """Get latency grade (A-F)"""
         avg_dpc = sum(self.dpc_latency_history) / len(self.dpc_latency_history) if self.dpc_latency_history else 0
 
         if avg_dpc < 100:
@@ -1722,7 +1655,6 @@ class LatencyMonitor:
         return 'F'
 
     def get_trend(self):
-        """Get latency trend: improving, stable, degrading"""
         if len(self.dpc_latency_history) < 10:
             return 'stable'
 
@@ -1740,12 +1672,10 @@ class LatencyMonitor:
         return 'stable'
 
     def is_audio_safe(self):
-        """Check if latency is safe for real-time audio"""
         avg_dpc = sum(self.dpc_latency_history) / len(self.dpc_latency_history) if self.dpc_latency_history else 0
         return avg_dpc < 500 and self.max_dpc_latency_us < 2000
 
     def get_stats(self):
-        """Get latency statistics"""
         avg_dpc = sum(self.dpc_latency_history) / len(self.dpc_latency_history) if self.dpc_latency_history else 0
         avg_isr = sum(self.interrupt_latency_history) / len(self.interrupt_latency_history) if self.interrupt_latency_history else 0
         avg_ctx = sum(self.context_switch_history) / len(self.context_switch_history) if self.context_switch_history else 0
@@ -1769,7 +1699,6 @@ class LatencyMonitor:
         }
 
     def reset_stats(self):
-        """Reset all statistics"""
         self.context_switch_history.clear()
         self.dpc_latency_history.clear()
         self.interrupt_latency_history.clear()
@@ -1782,7 +1711,6 @@ class LatencyMonitor:
 LATENCY_MONITOR = LatencyMonitor()
 
 class ForegroundBooster:
-    """Boost foreground window with CPU, I/O, and memory priority"""
 
     def __init__(self):
         self.enabled = False
@@ -1913,7 +1841,6 @@ class ForegroundBooster:
 FG_BOOSTER = ForegroundBooster()
 
 class GameModeBooster:
-    """Advanced game mode with comprehensive system optimizations"""
 
     def __init__(self):
         self.enabled = False
@@ -1992,7 +1919,6 @@ class GameModeBooster:
             pass
 
     def _detect_game(self):
-        """Detect games using CPU/GPU usage and process patterns"""
         try:
             gpu_in_use = False
             if GPUtil:
@@ -2054,7 +1980,6 @@ class GameModeBooster:
         return None, None
 
     def _activate_game_mode(self, pid, name):
-        """Activate comprehensive game mode optimizations"""
         self.active = True
         self.current_game_pid = pid
         self.current_game_name = name
@@ -2092,7 +2017,6 @@ class GameModeBooster:
             pass
 
     def _boost_game_process(self, pid):
-        """Apply comprehensive boost to game process"""
         try:
             h = open_proc(pid, win32con.PROCESS_SET_INFORMATION | win32con.PROCESS_QUERY_INFORMATION)
             if h:
@@ -2106,7 +2030,6 @@ class GameModeBooster:
             pass
 
     def _lower_background_priorities(self, game_pid):
-        """Lower priority of background processes"""
         try:
             for p in psutil.process_iter(['pid', 'name', 'cpu_percent']):
                 try:
@@ -2134,7 +2057,6 @@ class GameModeBooster:
             pass
 
     def _deactivate_game_mode(self):
-        """Restore system to normal state"""
         if self.activation_time:
             boost_duration = time.time() - self.activation_time
             self.stats['total_boost_time'] += boost_duration
@@ -2199,7 +2121,6 @@ class GameModeBooster:
 GAME_MODE = GameModeBooster()
 
 class JunkCleaner:
-    """Advanced junk cleaner with age-based filtering and more cleanup locations"""
 
     def __init__(self):
         self.enabled = True
@@ -2254,7 +2175,6 @@ class JunkCleaner:
         }
 
     def _is_old_enough(self, filepath):
-        """Check if file is old enough to be cleaned"""
         try:
             mtime = os.path.getmtime(filepath)
             age_days = (time.time() - mtime) / (60 * 60 * 24)
@@ -2263,7 +2183,6 @@ class JunkCleaner:
             return False
 
     def _is_protected(self, filename):
-        """Check if file should be protected"""
         filename_lower = filename.lower()
         if filename_lower in self.exclusions:
             return True
@@ -2273,7 +2192,6 @@ class JunkCleaner:
         return False
 
     def scan(self):
-        """Scan for junk files and calculate total size"""
         self.scan_results = {}
         self.total_size = 0
         total_files = 0
@@ -2315,7 +2233,6 @@ class JunkCleaner:
         return self.total_size
 
     def _scan_folder(self, folder):
-        """Calculate total size of cleanable files in folder"""
         total = 0
         count = 0
         try:
@@ -2335,7 +2252,6 @@ class JunkCleaner:
         return total, count
 
     def clean(self, categories=None):
-        """Clean junk files, optionally filtering by categories"""
         if not self.scan_results:
             self.scan()
 
@@ -2382,7 +2298,6 @@ class JunkCleaner:
         return cleaned_bytes, cleaned_files
 
     def _clean_folder(self, folder):
-        """Delete old files in a folder"""
         cleaned_bytes = 0
         cleaned_files = 0
 
@@ -2424,13 +2339,11 @@ class JunkCleaner:
 JUNK_CLEANER = JunkCleaner()
 
 class WindowsTweaks:
-    """Windows system tweaks for gaming and performance optimization"""
 
     def __init__(self):
         self.tweaks_applied = set()
 
     def disable_windows_key(self, disable=True):
-        """Disable/enable Windows key via registry"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -2460,7 +2373,6 @@ class WindowsTweaks:
             return False
 
     def disable_sticky_keys(self, disable=True):
-        """Disable sticky keys popup"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
@@ -2479,7 +2391,6 @@ class WindowsTweaks:
             return False
 
     def disable_game_bar(self, disable=True):
-        """Disable Xbox Game Bar"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
@@ -2506,7 +2417,6 @@ class WindowsTweaks:
             return False
 
     def disable_fullscreen_optimizations(self, disable=True):
-        """Disable fullscreen optimizations globally"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
@@ -2526,7 +2436,6 @@ class WindowsTweaks:
             return False
 
     def toggle_hags(self, enable=True):
-        """Toggle Hardware Accelerated GPU Scheduling"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -2544,7 +2453,6 @@ class WindowsTweaks:
             return False
 
     def disable_network_throttling(self, disable=True):
-        """Disable Windows network throttling for lower latency"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -2564,7 +2472,6 @@ class WindowsTweaks:
             return False
 
     def disable_nagle_algorithm(self, disable=True):
-        """Disable Nagle's algorithm for lower network latency"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -2603,7 +2510,6 @@ class WindowsTweaks:
             return False
 
     def disable_power_throttling(self, disable=True):
-        """Disable Windows power throttling for consistent performance"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -2632,7 +2538,6 @@ class WindowsTweaks:
                 return False
 
     def apply_gaming_tweaks(self):
-        """Apply all gaming-related tweaks at once"""
         results = {
             'sticky_keys': self.disable_sticky_keys(True),
             'game_bar': self.disable_game_bar(True),
@@ -2644,7 +2549,6 @@ class WindowsTweaks:
         return results
 
     def reset_all_tweaks(self):
-        """Reset all tweaks to Windows defaults"""
         self.disable_sticky_keys(False)
         self.disable_game_bar(False)
         self.disable_fullscreen_optimizations(False)
@@ -2666,7 +2570,6 @@ class WindowsTweaks:
 WIN_TWEAKS = WindowsTweaks()
 
 class SSDOptimizer:
-    """SSD optimization with TRIM scheduling and defrag control"""
 
     def __init__(self):
         self.drives = {}
@@ -2675,7 +2578,6 @@ class SSDOptimizer:
         self._detect_drives()
 
     def _detect_drives(self):
-        """Detect all drives and identify SSD vs HDD"""
         self.drives = {}
         try:
             result = subprocess.run(
@@ -2717,7 +2619,6 @@ class SSDOptimizer:
         self.last_scan = time.time()
 
     def run_trim(self, drive_letter='C'):
-        """Run TRIM/Optimize on a drive"""
         try:
             result = subprocess.run(
                 ['defrag', f'{drive_letter}:', '/O', '/U'],
@@ -2734,7 +2635,6 @@ class SSDOptimizer:
             return False
 
     def run_trim_all_ssds(self):
-        """Run TRIM on all detected SSDs"""
         results = {}
         for drive_id, info in self.drives.items():
             if info.get('type') == 'SSD':
@@ -2753,7 +2653,6 @@ class SSDOptimizer:
         return results
 
     def disable_defrag_for_ssds(self):
-        """Disable scheduled defragmentation for SSDs"""
         try:
             subprocess.run(
                 ['schtasks', '/Change', '/TN',
@@ -2765,7 +2664,6 @@ class SSDOptimizer:
             return False
 
     def enable_defrag_schedule(self):
-        """Re-enable scheduled defragmentation"""
         try:
             subprocess.run(
                 ['schtasks', '/Change', '/TN',
@@ -2777,7 +2675,6 @@ class SSDOptimizer:
             return False
 
     def check_trim_enabled(self, drive_letter='C'):
-        """Check if TRIM is enabled for a drive"""
         try:
             result = subprocess.run(
                 ['fsutil', 'behavior', 'query', 'DisableDeleteNotify'],
@@ -2788,7 +2685,6 @@ class SSDOptimizer:
             return None
 
     def enable_trim(self):
-        """Enable TRIM (DisableDeleteNotify = 0)"""
         try:
             subprocess.run(
                 ['fsutil', 'behavior', 'set', 'DisableDeleteNotify', '0'],
@@ -2811,7 +2707,6 @@ class SSDOptimizer:
 SSD_OPTIMIZER = SSDOptimizer()
 
 class ServiceOptimizer:
-    """Smart Windows service optimization based on usage patterns"""
 
     GAMING_DISABLE = [
         ('SysMain', 'Superfetch - preloads data, uses disk I/O'),
@@ -2855,7 +2750,6 @@ class ServiceOptimizer:
         self.recommendations = []
 
     def _get_service_status(self, service_name):
-        """Get current status of a service"""
         try:
             result = subprocess.run(
                 ['sc', 'query', service_name],
@@ -2870,7 +2764,6 @@ class ServiceOptimizer:
             return 'error'
 
     def _set_service(self, service_name, action):
-        """Start or stop a service"""
         try:
             subprocess.run(
                 ['sc', action, service_name],
@@ -2881,7 +2774,6 @@ class ServiceOptimizer:
             return False
 
     def _set_service_startup(self, service_name, startup_type):
-        """Set service startup type (auto, demand, disabled)"""
         try:
             subprocess.run(
                 ['sc', 'config', service_name, f'start={startup_type}'],
@@ -2892,7 +2784,6 @@ class ServiceOptimizer:
             return False
 
     def analyze_services(self):
-        """Analyze services and generate recommendations"""
         self.recommendations = []
 
         for service, description in self.GAMING_DISABLE:
@@ -2920,7 +2811,6 @@ class ServiceOptimizer:
         return self.recommendations
 
     def apply_gaming_profile(self):
-        """Stop non-essential services for gaming"""
         results = {}
         for service, _ in self.GAMING_DISABLE:
             status = self._get_service_status(service)
@@ -2933,7 +2823,6 @@ class ServiceOptimizer:
         return results
 
     def restore_services(self):
-        """Restore previously stopped services"""
         results = {}
         for service in list(self.modified_services):
             original = self.original_states.get(service, 'running')
@@ -2945,7 +2834,6 @@ class ServiceOptimizer:
         return results
 
     def disable_bloatware_services(self):
-        """Disable services that are safe to disable permanently"""
         results = {}
         for service, _ in self.SAFE_TO_DISABLE:
             success = self._set_service_startup(service, 'disabled')
@@ -2966,7 +2854,6 @@ class ServiceOptimizer:
 SERVICE_OPTIMIZER = ServiceOptimizer()
 
 class ScheduledTasksCleaner:
-    """Manage and clean unnecessary Windows scheduled tasks"""
 
     BLOATWARE_TASKS = [
         (r'\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser', 'Telemetry'),
@@ -3019,7 +2906,6 @@ class ScheduledTasksCleaner:
         self.last_scan = 0
 
     def scan_tasks(self):
-        """Scan all scheduled tasks and categorize them"""
         self.scanned_tasks = []
         try:
             result = subprocess.run(
@@ -3062,14 +2948,12 @@ class ScheduledTasksCleaner:
         return self.scanned_tasks
 
     def get_bloatware_tasks(self):
-        """Get list of tasks that can be safely disabled"""
         if not self.scanned_tasks:
             self.scan_tasks()
 
         return [t for t in self.scanned_tasks if t['can_disable']]
 
     def disable_task(self, task_name):
-        """Disable a specific scheduled task"""
         try:
             result = subprocess.run(
                 ['schtasks', '/Change', '/TN', task_name, '/DISABLE'],
@@ -3086,7 +2970,6 @@ class ScheduledTasksCleaner:
         return False
 
     def enable_task(self, task_name):
-        """Re-enable a scheduled task"""
         try:
             result = subprocess.run(
                 ['schtasks', '/Change', '/TN', task_name, '/ENABLE'],
@@ -3097,7 +2980,6 @@ class ScheduledTasksCleaner:
             return False
 
     def disable_all_bloatware(self):
-        """Disable all bloatware/telemetry tasks"""
         results = {}
         bloatware = self.get_bloatware_tasks()
 
@@ -3109,7 +2991,6 @@ class ScheduledTasksCleaner:
         return results
 
     def disable_telemetry_tasks(self):
-        """Disable only telemetry-related tasks"""
         results = {}
         if not self.scanned_tasks:
             self.scan_tasks()
@@ -3146,7 +3027,6 @@ class RAMCleaner:
         self.stats = {'cleans': 0, 'mb_freed': 0}
 
     def clear_standby_list(self):
-        """Clear Windows standby list to free physical RAM"""
         try:
             cmd = '''
             $mem = (Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory
@@ -3172,7 +3052,6 @@ class RAMCleaner:
             return False
 
     def get_available_ram_mb(self):
-        """Get current available RAM in MB"""
         try:
             mem = psutil.virtual_memory()
             return mem.available / (1024 * 1024)
@@ -3193,7 +3072,6 @@ class NetworkOptimizer:
         self.original_settings = {}
 
     def optimize_for_gaming(self):
-        """Apply network optimizations for lower latency gaming"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -3234,7 +3112,6 @@ class NetworkOptimizer:
             return False
 
     def disable_network_throttling(self):
-        """Disable Windows network throttling"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_LOCAL_MACHINE,
@@ -3258,7 +3135,6 @@ class VisualEffectsManager:
         self.disabled = False
 
     def disable_for_performance(self):
-        """Disable Windows visual effects for better gaming performance"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
@@ -3290,7 +3166,6 @@ class VisualEffectsManager:
             return False
 
     def restore_defaults(self):
-        """Restore default visual effects"""
         try:
             key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
@@ -3314,7 +3189,6 @@ class StartupOptimizer:
         self.startup_items = []
 
     def scan_startup(self):
-        """Scan Windows startup items"""
         self.startup_items = []
 
         locations = [
@@ -3355,7 +3229,6 @@ class StartupOptimizer:
         return self.startup_items
 
     def disable_startup_item(self, name, hive='HKCU'):
-        """Disable a startup item by moving to disabled key"""
         try:
             source_hive = winreg.HKEY_CURRENT_USER if hive == 'HKCU' else winreg.HKEY_LOCAL_MACHINE
             source_key = winreg.OpenKey(
@@ -3382,7 +3255,6 @@ class StartupOptimizer:
 STARTUP_OPT = StartupOptimizer()
 
 class SmartProcessManager:
-    """Learns and tracks process behavior patterns for intelligent optimization"""
     def __init__(self):
         self.process_profiles = {}
         self.learning_active = True
@@ -3391,7 +3263,6 @@ class SmartProcessManager:
         self._last_snapshot_time = 0
 
     def learn_process(self, pid, name, cpu, memory_mb):
-        """Learn from observed process behavior"""
         if name in SYSTEM_WHITELIST:
             return
 
@@ -3418,7 +3289,6 @@ class SmartProcessManager:
             profile['recommended_priority'] = self._determine_priority(profile)
 
     def _categorize_process(self, name):
-        """Categorize process by name patterns"""
         name_lower = name.lower()
         if any(x in name_lower for x in ['game', 'steam', 'epic', 'origin', 'battle.net']):
             return 'gaming'
@@ -3433,7 +3303,6 @@ class SmartProcessManager:
         return 'other'
 
     def _determine_priority(self, profile):
-        """Determine recommended priority based on learned behavior"""
         if profile['category'] == 'gaming':
             return 'High'
         elif profile['avg_cpu'] > 50:
@@ -3443,7 +3312,6 @@ class SmartProcessManager:
         return 'Normal'
 
     def take_snapshot(self):
-        """Take a snapshot of current process states for learning"""
         now = time.time()
         if now - self._last_snapshot_time < self._snapshot_interval:
             return
@@ -3461,7 +3329,6 @@ class SmartProcessManager:
             pass
 
     def get_recommendation(self, process_name):
-        """Get optimization recommendation for a process"""
         key = process_name.lower()
         if key in self.process_profiles:
             return self.process_profiles[key]
@@ -3470,7 +3337,6 @@ class SmartProcessManager:
 SMART_PROCESS_MGR = SmartProcessManager()
 
 class AnomalyDetector:
-    """Detects unusual system behavior by comparing metrics to learned baselines"""
     def __init__(self):
         self.baselines = {
             'cpu_usage': {'avg': 25.0, 'std': 15.0, 'samples': 10},
@@ -3481,7 +3347,6 @@ class AnomalyDetector:
         self._anomaly_threshold = 2.5
 
     def update_baseline(self, metric, value):
-        """Update baseline statistics with new observation"""
         if metric not in self.baselines:
             self.baselines[metric] = {'avg': value, 'std': 0, 'samples': 1}
             return
@@ -3496,7 +3361,6 @@ class AnomalyDetector:
         baseline['samples'] = min(n + 1, 1000)
 
     def detect_anomalies(self):
-        """Detect current system anomalies based on baselines"""
         anomalies = []
 
         try:
@@ -3554,7 +3418,6 @@ class AnomalyDetector:
         return anomalies
 
     def get_system_health(self):
-        """Calculate overall system health score (0-100)"""
         try:
             cpu = psutil.cpu_percent(interval=0.1)
             mem = psutil.virtual_memory().percent
@@ -3569,14 +3432,12 @@ class AnomalyDetector:
 ANOMALY_DETECTOR = AnomalyDetector()
 
 class AIOptimizer:
-    """Generates intelligent optimization suggestions based on system analysis"""
     def __init__(self):
         self.suggestions_cache = []
         self._last_analysis = 0
         self._analysis_interval = 60
 
     def generate_suggestions(self):
-        """Analyze system and generate optimization suggestions"""
         now = time.time()
         if now - self._last_analysis < self._analysis_interval and self.suggestions_cache:
             return self.suggestions_cache
@@ -3649,7 +3510,6 @@ class AIOptimizer:
         return suggestions
 
     def apply_suggestion(self, suggestion):
-        """Apply a specific optimization suggestion"""
         try:
             action = suggestion.get('action', '')
 
@@ -3674,7 +3534,6 @@ class AIOptimizer:
             return False
 
     def refresh(self):
-        """Force refresh of suggestions"""
         self._last_analysis = 0
         return self.generate_suggestions()
 
@@ -3689,7 +3548,6 @@ class ProcessCache:
         self._lock = threading.Lock()
 
     def get_processes(self, attrs=None):
-        """Get cached process list, refresh if stale"""
         now = time.time()
         with self._lock:
             if now - self._cache_time > self._cache_ttl:
@@ -3697,7 +3555,6 @@ class ProcessCache:
             return list(self._cache)
 
     def _refresh(self, attrs=None):
-        """Refresh the process cache"""
         if attrs is None:
             attrs = ['pid', 'name', 'cpu_percent']
         try:
@@ -3707,7 +3564,6 @@ class ProcessCache:
             pass
 
     def invalidate(self):
-        """Force cache refresh on next access"""
         with self._lock:
             self._cache_time = 0
 
@@ -3719,7 +3575,6 @@ class ChangeTracker:
         self.max_changes = 100
 
     def log(self, change_type, data):
-        """Log a change for potential undo"""
         self.changes.append({
             'type': change_type,
             'data': data,
@@ -3738,7 +3593,6 @@ class ChangeTracker:
         self.log('registry', {'key': key_path, 'name': value_name, 'old': old_value, 'new': new_value})
 
     def undo_last(self):
-        """Undo the last logged change"""
         if not self.changes:
             return None
 
@@ -3760,7 +3614,6 @@ class ChangeTracker:
         return None
 
     def undo_all(self):
-        """Undo all logged changes"""
         count = 0
         while self.changes:
             if self.undo_last():
@@ -3795,7 +3648,6 @@ class GameProfiles:
             pass
 
     def create_profile(self, game_name):
-        """Create new profile with current settings"""
         self.profiles[game_name] = {
             'game_mode': GAME_MODE.enabled,
             'priority_balancer': PRIORITY_BALANCER.enabled,
@@ -3809,7 +3661,6 @@ class GameProfiles:
         return True
 
     def apply_profile(self, game_name):
-        """Apply a saved profile"""
         if game_name not in self.profiles:
             return False
 
@@ -3848,7 +3699,6 @@ class AutoStartManager:
         self.enabled = self._check_enabled()
 
     def _check_enabled(self):
-        """Check if auto-start is currently enabled"""
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY, 0, winreg.KEY_READ)
             try:
@@ -3862,7 +3712,6 @@ class AutoStartManager:
             return False
 
     def enable(self):
-        """Enable auto-start with Windows"""
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY, 0, winreg.KEY_SET_VALUE)
             script_path = os.path.abspath(sys.argv[0])
@@ -3878,7 +3727,6 @@ class AutoStartManager:
             return False
 
     def disable(self):
-        """Disable auto-start"""
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.RUN_KEY, 0, winreg.KEY_SET_VALUE)
             try:
@@ -3900,7 +3748,6 @@ class AutoStartManager:
 AUTO_START = AutoStartManager()
 
 def confirm_action(parent, title, message, dangerous=True):
-    """Show confirmation dialog before dangerous actions"""
     dialog = ctk.CTkToplevel(parent)
     dialog.title(title)
     dialog.geometry("400x180")
@@ -3949,7 +3796,6 @@ class GameLibraryScanner:
         self.gog_registry = r"SOFTWARE\WOW6432Node\GOG.com\Games"
 
     def scan_steam(self):
-        """Scan Steam library for installed games"""
         games = []
         for steam_path in self.steam_paths:
             if os.path.exists(steam_path):
@@ -3970,7 +3816,6 @@ class GameLibraryScanner:
         return games
 
     def scan_epic(self):
-        """Scan Epic Games library"""
         games = []
         if os.path.exists(self.epic_manifest):
             try:
@@ -3989,7 +3834,6 @@ class GameLibraryScanner:
         return games
 
     def scan_gog(self):
-        """Scan GOG Galaxy library via registry"""
         games = []
         try:
             key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, self.gog_registry, 0, winreg.KEY_READ)
@@ -4016,7 +3860,6 @@ class GameLibraryScanner:
         return games
 
     def scan_all(self):
-        """Scan all game libraries"""
         self.games = []
         self.games.extend(self.scan_steam())
         self.games.extend(self.scan_epic())
@@ -4033,7 +3876,6 @@ class DriverChecker:
         self.drivers = []
 
     def scan_drivers(self):
-        """Get list of installed drivers via WMI"""
         self.drivers = []
         try:
             result = subprocess.run(
@@ -4056,7 +3898,6 @@ class DriverChecker:
         return self.drivers
 
     def get_graphics_drivers(self):
-        """Get GPU drivers specifically"""
         return [d for d in self.drivers if 'graphics' in d['device'].lower()
                 or 'nvidia' in d['device'].lower()
                 or 'amd' in d['device'].lower()
@@ -4076,7 +3917,6 @@ class ServiceManager:
         ]
 
     def scan_services(self):
-        """Get list of Windows services"""
         self.services = []
         try:
             result = subprocess.run(
@@ -4103,7 +3943,6 @@ class ServiceManager:
         return self.services
 
     def start_service(self, name):
-        """Start a service"""
         try:
             subprocess.run(['sc', 'start', name], capture_output=True, timeout=30)
             return True
@@ -4111,7 +3950,6 @@ class ServiceManager:
             return False
 
     def stop_service(self, name):
-        """Stop a service"""
         try:
             subprocess.run(['sc', 'stop', name], capture_output=True, timeout=30)
             CHANGE_TRACKER.log_service_stop(name)
@@ -4120,7 +3958,6 @@ class ServiceManager:
             return False
 
     def disable_service(self, name):
-        """Disable a service"""
         try:
             subprocess.run(['sc', 'config', name, 'start=', 'disabled'], capture_output=True, timeout=30)
             return True
@@ -4128,7 +3965,6 @@ class ServiceManager:
             return False
 
     def enable_service(self, name):
-        """Enable a service (set to manual)"""
         try:
             subprocess.run(['sc', 'config', name, 'start=', 'demand'], capture_output=True, timeout=30)
             return True
@@ -4136,7 +3972,6 @@ class ServiceManager:
             return False
 
     def is_gaming_safe(self, name):
-        """Check if service is safe to disable for gaming"""
         return name in self.gaming_safe_disable
 
 SERVICE_MGR = ServiceManager()
@@ -4152,7 +3987,6 @@ class ContextMenuCleaner:
         self.disabled_key = r"Software\OptiCores\DisabledContextMenu"
 
     def scan(self):
-        """Scan context menu entries from registry"""
         self.entries = []
         for root, path in self.shell_keys:
             try:
@@ -4176,7 +4010,6 @@ class ContextMenuCleaner:
         return self.entries
 
     def disable_entry(self, entry_name, path):
-        """Disable a context menu entry by renaming"""
         pass
 
     def get_entry_count(self):
@@ -4189,7 +4022,6 @@ class ScheduledTasksManager:
         self.tasks = []
 
     def scan(self):
-        """Get list of scheduled tasks"""
         self.tasks = []
         try:
             result = subprocess.run(
@@ -4213,7 +4045,6 @@ class ScheduledTasksManager:
         return self.tasks
 
     def disable_task(self, task_name):
-        """Disable a scheduled task"""
         try:
             subprocess.run(
                 ['schtasks', '/change', '/tn', task_name, '/disable'],
@@ -4224,7 +4055,6 @@ class ScheduledTasksManager:
             return False
 
     def enable_task(self, task_name):
-        """Enable a scheduled task"""
         try:
             subprocess.run(
                 ['schtasks', '/change', '/tn', task_name, '/enable'],
@@ -4238,7 +4068,6 @@ class ScheduledTasksManager:
         return len(self.tasks)
 
     def get_bloatware_tasks(self):
-        """Get tasks that are typically safe to disable"""
         bloat_keywords = ['telemetry', 'feedback', 'diagnostic', 'customer',
                           'microsoft compatibility', 'office telemetry']
         return [t for t in self.tasks
@@ -4247,7 +4076,6 @@ class ScheduledTasksManager:
 SCHED_TASKS = ScheduledTasksManager()
 
 class AdaptivePoller:
-    """Adaptive polling system that adjusts refresh intervals based on system load"""
     def __init__(self):
         self.base_interval = 1.0
         self.min_interval = 0.5
@@ -4268,7 +4096,6 @@ class AdaptivePoller:
         }
 
     def get_interval(self, component='default'):
-        """Get adaptive interval for a specific component"""
         try:
             cpu = psutil.cpu_percent(interval=None)
 
@@ -4286,14 +4113,12 @@ class AdaptivePoller:
             return self.base_interval
 
     def should_poll(self, component, last_poll_time):
-        """Check if enough time has passed to poll again"""
         interval = self.get_interval(component)
         return (time.time() - last_poll_time) >= interval
 
 ADAPTIVE_POLLER = AdaptivePoller()
 
 class SystemDataCache:
-    """Cache for frequently accessed system data with TTL"""
     def __init__(self):
         self._cache = {}
         self._timestamps = {}
@@ -4309,7 +4134,6 @@ class SystemDataCache:
         }
 
     def get(self, key, fetch_func, ttl=None):
-        """Get cached value or fetch if stale"""
         with self._locks[key]:
             now = time.time()
 
@@ -4331,7 +4155,6 @@ class SystemDataCache:
                 raise e
 
     def invalidate(self, key=None):
-        """Invalidate cache for a key or all keys"""
         if key:
             with self._locks[key]:
                 if key in self._cache:
@@ -4343,7 +4166,6 @@ class SystemDataCache:
                 self.invalidate(k)
 
     def get_cached_temperature(self):
-        """Get cached CPU temperature"""
         def fetch():
             if not WMI_CLIENT:
                 return None
@@ -4360,7 +4182,6 @@ class SystemDataCache:
         return self.get('wmi_temperature', fetch, ttl=10.0)
 
     def get_cached_disk_usage(self):
-        """Get cached disk usage for all drives"""
         def fetch():
             drives = []
             for partition in psutil.disk_partitions():
@@ -4385,14 +4206,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import queue
 
 class ThreadPoolManager:
-    """Centralized thread pool for background tasks"""
     def __init__(self, max_workers=4):
         self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="OptiCores")
         self.active_tasks = []
         self._shutdown = False
 
     def submit(self, func, *args, **kwargs):
-        """Submit a task to the thread pool"""
         if self._shutdown:
             return None
 
@@ -4401,7 +4220,6 @@ class ThreadPoolManager:
         return future
 
     def submit_periodic(self, func, interval, *args, **kwargs):
-        """Submit a task that runs periodically"""
         def wrapper():
             while not self._shutdown:
                 try:
@@ -4413,7 +4231,6 @@ class ThreadPoolManager:
         return self.submit(wrapper)
 
     def wait_all(self, timeout=None):
-        """Wait for all active tasks to complete"""
         completed = []
         try:
             for future in as_completed(self.active_tasks, timeout=timeout):
@@ -4427,18 +4244,15 @@ class ThreadPoolManager:
         return completed
 
     def shutdown(self, wait=True):
-        """Shutdown the thread pool"""
         self._shutdown = True
         self.executor.shutdown(wait=wait)
 
     def get_active_count(self):
-        """Get number of active tasks"""
         return len([f for f in self.active_tasks if not f.done()])
 
 THREAD_POOL = ThreadPoolManager(max_workers=6)
 
 class NetworkMonitor:
-    """Real-time network bandwidth monitoring and optimization"""
     def __init__(self):
         self.enabled = False
         self.last_io = None
@@ -4450,7 +4264,6 @@ class NetworkMonitor:
         self.per_process_tracking = {}
 
     def update(self):
-        """Update network statistics"""
         if not self.enabled:
             return
 
@@ -4473,7 +4286,6 @@ class NetworkMonitor:
             pass
 
     def get_stats(self):
-        """Get current network statistics"""
         return {
             'upload_mbps': (self.upload_speed * 8) / (1024 * 1024),
             'download_mbps': (self.download_speed * 8) / (1024 * 1024),
@@ -4484,7 +4296,6 @@ class NetworkMonitor:
         }
 
     def get_adapters(self):
-        """Get network adapter information"""
         adapters = []
         try:
             stats = psutil.net_if_stats()
@@ -4512,7 +4323,6 @@ class NetworkMonitor:
         return adapters
 
     def flush_dns(self):
-        """Flush DNS cache"""
         try:
             subprocess.run(['ipconfig', '/flushdns'], capture_output=True, timeout=10)
             return True
@@ -4520,7 +4330,6 @@ class NetworkMonitor:
             return False
 
     def optimize_tcp(self):
-        """Optimize TCP settings for gaming/performance"""
         try:
             commands = [
                 ['netsh', 'int', 'tcp', 'set', 'global', 'autotuninglevel=normal'],
@@ -4542,7 +4351,6 @@ class NetworkMonitor:
 NETWORK_MONITOR = NetworkMonitor()
 
 class EnhancedThermalMonitor:
-    """Advanced temperature monitoring and thermal management"""
     def __init__(self):
         self.enabled = True
         self.cpu_temp = None
@@ -4554,7 +4362,6 @@ class EnhancedThermalMonitor:
         self.active_alerts = []
 
     def update(self):
-        """Update temperature readings"""
         if not self.enabled:
             return
 
@@ -4576,7 +4383,6 @@ class EnhancedThermalMonitor:
                 pass
 
     def _check_alerts(self, component, temp):
-        """Check if temperature exceeds thresholds"""
         if not self.alerts_enabled:
             return
 
@@ -4593,7 +4399,6 @@ class EnhancedThermalMonitor:
                 self.active_alerts.remove(alert_id)
 
     def get_stats(self):
-        """Get thermal statistics"""
         return {
             'cpu_temp': self.cpu_temp,
             'gpu_temps': self.gpu_temps,
@@ -4604,7 +4409,6 @@ class EnhancedThermalMonitor:
         }
 
     def get_max_temps(self):
-        """Get maximum recorded temperatures"""
         return {
             'cpu_max': max(self.temp_history['cpu']) if self.temp_history['cpu'] else None,
             'gpu_max': [max(self.temp_history[f'gpu{i}']) if self.temp_history[f'gpu{i}'] else None
@@ -4614,7 +4418,6 @@ class EnhancedThermalMonitor:
 THERMAL_MONITOR = EnhancedThermalMonitor()
 
 class EnhancedSystemCleaner:
-    """Advanced system cleanup with multiple cleanup categories"""
     def __init__(self):
         self.enabled = True
         self.scan_results = {}
@@ -4636,7 +4439,6 @@ class EnhancedSystemCleaner:
         self.clean_extensions = {'.tmp', '.temp', '.log', '.bak', '.old', '.dmp', '.chk'}
 
     def scan(self):
-        """Scan for cleanable files"""
         self.scan_results = {
             'temp_files': 0,
             'browser_cache': 0,
@@ -4673,7 +4475,6 @@ class EnhancedSystemCleaner:
         return self.scan_results
 
     def clean_temp_files(self):
-        """Clean temporary files"""
         files_deleted = 0
         bytes_freed = 0
 
@@ -4698,7 +4499,6 @@ class EnhancedSystemCleaner:
         return files_deleted, bytes_freed
 
     def clean_browser_cache(self, browser=None):
-        """Clean browser caches"""
         files_deleted = 0
         bytes_freed = 0
 
@@ -4725,7 +4525,6 @@ class EnhancedSystemCleaner:
         return files_deleted, bytes_freed
 
     def find_large_files(self, min_size_mb=100, path='C:\\'):
-        """Find large files above specified size"""
         large_files = []
 
         try:
@@ -4756,7 +4555,6 @@ class EnhancedSystemCleaner:
         return sorted(large_files, key=lambda x: x['size_mb'], reverse=True)
 
     def get_stats(self):
-        """Get cleanup statistics"""
         return {
             'scan_results': self.scan_results,
             'total_cleanable_mb': self.total_cleanable / (1024 * 1024),
@@ -4766,7 +4564,6 @@ class EnhancedSystemCleaner:
 SYSTEM_CLEANER = EnhancedSystemCleaner()
 
 class DiscordRichPresence:
-    """Show optimization status in Discord profile"""
     APPLICATION_ID = "1234567890123456789"
 
     def __init__(self):
@@ -4778,7 +4575,6 @@ class DiscordRichPresence:
         self._stop_event = threading.Event()
 
     def connect(self):
-        """Connect to Discord"""
         try:
             from pypresence import Presence
             self.rpc = Presence(self.APPLICATION_ID)
@@ -4794,7 +4590,6 @@ class DiscordRichPresence:
             return False
 
     def disconnect(self):
-        """Disconnect from Discord"""
         try:
             if self.rpc:
                 self.rpc.close()
@@ -4804,7 +4599,6 @@ class DiscordRichPresence:
             pass
 
     def update_presence(self, state=None, details=None, large_image="opticores", large_text="OptiCores"):
-        """Update Discord presence"""
         if not self.connected or not self.rpc:
             return False
 
@@ -4821,7 +4615,6 @@ class DiscordRichPresence:
             return False
 
     def _get_status(self):
-        """Get current optimization status"""
         active = []
         if GAME_MODE.enabled or GAME_MODE.game_active:
             active.append("🎮 Game Mode")
@@ -4837,7 +4630,6 @@ class DiscordRichPresence:
         return "System Optimized"
 
     def _get_details(self):
-        """Get system details for presence"""
         try:
             cpu = psutil.cpu_percent()
             ram = psutil.virtual_memory().percent
@@ -4846,7 +4638,6 @@ class DiscordRichPresence:
             return "Optimizing System"
 
     def start_auto_update(self, interval=15):
-        """Start auto-updating presence in background"""
         if self._update_thread and self._update_thread.is_alive():
             return
 
@@ -4862,11 +4653,9 @@ class DiscordRichPresence:
         self._update_thread.start()
 
     def stop_auto_update(self):
-        """Stop auto-updating"""
         self._stop_event.set()
 
     def enable(self):
-        """Enable Discord Rich Presence"""
         if self.connect():
             self.enabled = True
             self.start_auto_update()
@@ -4874,7 +4663,6 @@ class DiscordRichPresence:
         return False
 
     def disable(self):
-        """Disable Discord Rich Presence"""
         self.enabled = False
         self.stop_auto_update()
         self.disconnect()
@@ -4885,7 +4673,6 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 class LogManager:
-    """Centralized logging system with rotation and multiple levels"""
     def __init__(self):
         self.log_dir = os.path.join(APP_DIR, 'logs')
         os.makedirs(self.log_dir, exist_ok=True)
@@ -4896,7 +4683,6 @@ class LogManager:
         self._setup_loggers()
 
     def _setup_loggers(self):
-        """Setup logging handlers"""
         log_level = logging.DEBUG if self.debug_mode else logging.INFO
 
         main_logger = logging.getLogger('OptiCores')
@@ -4936,7 +4722,6 @@ class LogManager:
         self.loggers['performance'] = perf_logger
 
     def log(self, message, level='info', logger='main'):
-        """Log a message"""
         log_func = getattr(self.loggers.get(logger, self.loggers['main']), level, None)
         if log_func:
             log_func(message)
@@ -4955,32 +4740,27 @@ class LogManager:
         logger_obj.error(message, exc_info=exc_info)
 
     def log_performance(self, component, duration_ms, details=None):
-        """Log performance metrics"""
         msg = f"{component}: {duration_ms:.2f}ms"
         if details:
             msg += f" - {details}"
         self.log(msg, 'info', 'performance')
 
     def enable_debug(self):
-        """Enable debug mode"""
         self.debug_mode = True
         for logger in self.loggers.values():
             logger.setLevel(logging.DEBUG)
 
     def disable_debug(self):
-        """Disable debug mode"""
         self.debug_mode = False
         for logger in self.loggers.values():
             logger.setLevel(logging.INFO)
 
     def get_log_files(self):
-        """Get list of log files"""
         return [f for f in os.listdir(self.log_dir) if f.endswith('.log')]
 
 LOG_MANAGER = LogManager()
 
 class ThemeManager:
-    """Advanced theme management with custom color schemes"""
     def __init__(self):
         self.current_theme = 'dark'
         self.current_accent = '#3B82F6'
@@ -5022,7 +4802,6 @@ class ThemeManager:
         }
 
     def set_theme(self, theme_name):
-        """Set color theme"""
         if theme_name in self.themes:
             self.current_theme = theme_name
             ctk.set_appearance_mode('Dark' if theme_name == 'dark' else 'Light')
@@ -5030,28 +4809,23 @@ class ThemeManager:
         return False
 
     def set_accent_color(self, color_name):
-        """Set accent color"""
         if color_name in self.accent_colors:
             self.current_accent = self.accent_colors[color_name]
             return True
         return False
 
     def set_custom_accent(self, hex_color):
-        """Set custom accent color"""
         self.accent_colors['Custom'] = hex_color
         self.current_accent = hex_color
         return True
 
     def get_color(self, key):
-        """Get color from current theme"""
         return self.themes.get(self.current_theme, {}).get(key, '#FFFFFF')
 
     def get_accent_color(self):
-        """Get current accent color"""
         return self.current_accent
 
     def apply_accent_to_widget(self, widget, widget_type='button'):
-        """Apply accent color to a widget"""
         try:
             if widget_type == 'button':
                 widget.configure(fg_color=self.current_accent)
@@ -5065,7 +4839,6 @@ class ThemeManager:
 THEME_MANAGER = ThemeManager()
 
 class EnhancedBenchmarkSuite:
-    """Expanded benchmark suite with GPU, disk, memory, and network tests"""
     def __init__(self):
         self.results = {}
         self.baseline = {}
@@ -5073,7 +4846,6 @@ class EnhancedBenchmarkSuite:
         self.running = False
 
     def run_cpu_single_core(self, duration=5):
-        """Single-core CPU benchmark"""
         LOG_MANAGER.info("Starting single-core CPU benchmark")
         start = time.perf_counter()
         iterations = 0
@@ -5094,7 +4866,6 @@ class EnhancedBenchmarkSuite:
         return score
 
     def run_cpu_multi_core(self, duration=5):
-        """Multi-core CPU benchmark"""
         LOG_MANAGER.info("Starting multi-core CPU benchmark")
         core_count = multiprocessing.cpu_count()
 
@@ -5122,7 +4893,6 @@ class EnhancedBenchmarkSuite:
         return score
 
     def run_memory_test(self, size_mb=100):
-        """Memory bandwidth test"""
         LOG_MANAGER.info(f"Starting memory test ({size_mb}MB)")
         size = size_mb * 1024 * 1024 // 8
 
@@ -5142,7 +4912,6 @@ class EnhancedBenchmarkSuite:
         return score
 
     def run_disk_test(self, drive='C:\\'):
-        """Disk I/O performance test"""
         LOG_MANAGER.info(f"Starting disk test on {drive}")
         test_file = os.path.join(drive, 'opticores_bench.tmp')
         test_size = 50 * 1024 * 1024
@@ -5172,7 +4941,6 @@ class EnhancedBenchmarkSuite:
             return 0
 
     def run_gpu_test(self):
-        """GPU computation test"""
         if not GPUtil:
             return 0
 
@@ -5191,7 +4959,6 @@ class EnhancedBenchmarkSuite:
             return 0
 
     def run_full_benchmark(self):
-        """Run complete benchmark suite"""
         self.running = True
         LOG_MANAGER.info("Starting full benchmark suite")
 
@@ -5223,7 +4990,6 @@ class EnhancedBenchmarkSuite:
         return self.results
 
     def get_comparison(self):
-        """Compare current results to baseline"""
         if not self.baseline or not self.results:
             return {}
 
@@ -5242,7 +5008,6 @@ class EnhancedBenchmarkSuite:
         return comparison
 
     def export_results(self, filepath):
-        """Export benchmark results to JSON"""
         try:
             data = {
                 'results': self.results,
@@ -5264,7 +5029,6 @@ class EnhancedBenchmarkSuite:
 BENCHMARK_SUITE = EnhancedBenchmarkSuite()
 
 class AIOptimizationEngine:
-    """AI-powered optimization suggestions based on system behavior patterns"""
     def __init__(self):
         self.enabled = True
         self.history_file = os.path.join(APP_DIR, 'optimization_history.json')
@@ -5278,7 +5042,6 @@ class AIOptimizationEngine:
         self._load_history()
 
     def _load_history(self):
-        """Load optimization history"""
         try:
             if os.path.exists(self.history_file):
                 with open(self.history_file, 'r') as f:
@@ -5289,7 +5052,6 @@ class AIOptimizationEngine:
             pass
 
     def _save_history(self):
-        """Save optimization history"""
         try:
             with open(self.history_file, 'w') as f:
                 json.dump({
@@ -5300,7 +5062,6 @@ class AIOptimizationEngine:
             pass
 
     def record_system_state(self):
-        """Record current system state for learning"""
         try:
             state = {
                 'timestamp': time.time(),
@@ -5331,7 +5092,6 @@ class AIOptimizationEngine:
             pass
 
     def generate_suggestions(self):
-        """Generate AI-powered optimization suggestions"""
         self.suggestions = []
 
         if len(self.behavior_patterns['high_cpu']) >= self.min_samples:
@@ -5377,7 +5137,6 @@ class AIOptimizationEngine:
         return self.suggestions
 
     def apply_suggestion(self, suggestion):
-        """Apply an optimization suggestion"""
         try:
             suggestion['action']()
             self.applied_optimizations.append({
@@ -5395,18 +5154,15 @@ class AIOptimizationEngine:
 AI_OPTIMIZER = AIOptimizationEngine()
 
 class AnimationManager:
-    """Manages UI animations for smooth visual effects"""
     def __init__(self):
         self._animations = {}
         self._running = True
         self._root = None
 
     def set_root(self, root):
-        """Set the root widget for scheduling animations"""
         self._root = root
 
     def pulse_color(self, widget, property_name, color1, color2, duration_ms=1000, attr='configure'):
-        """Animate a color property between two colors in a pulsing pattern"""
         if not self._root or not self._running:
             return
 
@@ -5478,11 +5234,9 @@ class AnimationManager:
             pass
 
     def pulse_opacity(self, widget, min_opacity=0.5, max_opacity=1.0, duration_ms=1500):
-        """Pulse a widget's opacity (simulated via color alpha)"""
         pass
 
     def stop_animation(self, widget, property_name=None):
-        """Stop animation on a widget"""
         widget_id = id(widget)
         if widget_id in self._animations:
             if property_name:
@@ -5493,24 +5247,20 @@ class AnimationManager:
                     self._animations[widget_id][prop]['active'] = False
 
     def stop_all(self):
-        """Stop all animations"""
         self._running = False
         for widget_id in self._animations:
             for prop in self._animations[widget_id]:
                 self._animations[widget_id][prop]['active'] = False
 
     def glow_effect(self, widget, base_color, glow_color, duration_ms=2000):
-        """Apply a glowing effect to a widget's border or background"""
         self.pulse_color(widget, 'border_color', base_color, glow_color, duration_ms)
 
     def breathing_effect(self, widget, base_fg, bright_fg, duration_ms=3000):
-        """Apply a breathing effect to foreground color"""
         self.pulse_color(widget, 'fg_color', base_fg, bright_fg, duration_ms)
 
 ANIMATION_MANAGER = AnimationManager()
 
 class AutoTuningSystem:
-    """Automatic parameter tuning based on workload"""
     def __init__(self):
         self.enabled = False
         self.tuning_history = []
@@ -5544,7 +5294,6 @@ class AutoTuningSystem:
         }
 
     def measure_performance(self):
-        """Measure current system performance"""
         try:
             return {
                 'cpu_avg': psutil.cpu_percent(interval=1),
@@ -5556,7 +5305,6 @@ class AutoTuningSystem:
             return {}
 
     def auto_tune(self):
-        """Automatically tune parameters"""
         if not self.enabled:
             return
 
@@ -5592,7 +5340,6 @@ class AutoTuningSystem:
                 pass
 
     def _apply_parameter(self, param_name, value):
-        """Apply a parameter value"""
         param = self.parameters[param_name]
         target = param['target']
 
@@ -5604,7 +5351,6 @@ class AutoTuningSystem:
             pass
 
     def _is_better_performance(self, new_perf, old_perf):
-        """Compare performance metrics"""
         score = 0
 
         if new_perf.get('responsiveness', 0) > old_perf.get('responsiveness', 0):
@@ -5619,7 +5365,6 @@ class AutoTuningSystem:
 AUTO_TUNER = AutoTuningSystem()
 
 class SystemHealthAnalyzer:
-    """Advanced system health scoring and bottleneck detection"""
     def __init__(self):
         self.health_score = 100
         self.component_scores = {}
@@ -5628,7 +5373,6 @@ class SystemHealthAnalyzer:
         self.predictions = {}
 
     def analyze(self):
-        """Perform comprehensive system health analysis"""
         scores = {}
 
         cpu_percent = psutil.cpu_percent(interval=1)
@@ -5686,7 +5430,6 @@ class SystemHealthAnalyzer:
         return self.health_score
 
     def _detect_bottlenecks(self):
-        """Detect system bottlenecks"""
         self.bottlenecks = []
 
         for component, score in self.component_scores.items():
@@ -5698,7 +5441,6 @@ class SystemHealthAnalyzer:
                 })
 
     def _generate_warnings(self):
-        """Generate health warnings"""
         self.warnings = []
 
         if self.health_score < 50:
@@ -5714,7 +5456,6 @@ class SystemHealthAnalyzer:
             self.warnings.append("Thermal alerts active - check cooling")
 
     def predict_performance(self, hours_ahead=1):
-        """Predict performance trend"""
         if hasattr(BENCHMARK_SUITE, 'history') and len(BENCHMARK_SUITE.history) >= 3:
             recent = BENCHMARK_SUITE.history[-3:]
             scores = [r['overall'] for r in recent]
@@ -5732,7 +5473,6 @@ class SystemHealthAnalyzer:
         return self.predictions
 
     def get_recommendations(self):
-        """Get optimization recommendations based on health"""
         recommendations = []
 
         for bottleneck in self.bottlenecks:
@@ -5750,7 +5490,6 @@ class SystemHealthAnalyzer:
 HEALTH_ANALYZER = SystemHealthAnalyzer()
 
 class SmartProcessManager:
-    """Intelligent process categorization and management"""
     def __init__(self):
         self.process_profiles = {}
         self.categories = defaultdict(list)
@@ -5768,7 +5507,6 @@ class SmartProcessManager:
         self._load_learning()
 
     def _load_learning(self):
-        """Load learned process profiles"""
         try:
             if os.path.exists(self.learning_file):
                 with open(self.learning_file, 'r') as f:
@@ -5777,7 +5515,6 @@ class SmartProcessManager:
             pass
 
     def _save_learning(self):
-        """Save learned process profiles"""
         try:
             with open(self.learning_file, 'w') as f:
                 json.dump(self.process_profiles, f, indent=2)
@@ -5785,7 +5522,6 @@ class SmartProcessManager:
             pass
 
     def learn_process_behavior(self, pid, name):
-        """Learn process behavior patterns"""
         try:
             p = psutil.Process(pid)
 
@@ -5819,7 +5555,6 @@ class SmartProcessManager:
             pass
 
     def _categorize(self, process_name):
-        """Categorize process based on name"""
         name_lower = process_name.lower()
 
         for category, patterns in self.known_patterns.items():
@@ -5830,19 +5565,16 @@ class SmartProcessManager:
         return 'unknown'
 
     def get_process_category(self, process_name):
-        """Get learned category for process"""
         if process_name in self.process_profiles:
             return self.process_profiles[process_name]['category']
         return self._categorize(process_name)
 
     def get_suggested_priority(self, process_name):
-        """Get AI-suggested priority for process"""
         if process_name in self.process_profiles:
             return self.process_profiles[process_name].get('suggested_priority', 'Normal')
         return 'Normal'
 
     def get_category_stats(self):
-        """Get statistics by category"""
         stats = defaultdict(lambda: {'count': 0, 'total_cpu': 0, 'total_mem': 0})
 
         for name, profile in self.process_profiles.items():
@@ -5856,7 +5588,6 @@ class SmartProcessManager:
 SMART_PROCESS_MGR = SmartProcessManager()
 
 class AutomationRulesEngine:
-    """Advanced automation with conditional rules and triggers"""
     def __init__(self):
         self.enabled = True
         self.rules = []
@@ -5866,7 +5597,6 @@ class AutomationRulesEngine:
         self._load_rules()
 
     def _load_rules(self):
-        """Load automation rules"""
         try:
             if os.path.exists(self.rules_file):
                 with open(self.rules_file, 'r') as f:
@@ -5875,7 +5605,6 @@ class AutomationRulesEngine:
             self._create_default_rules()
 
     def _save_rules(self):
-        """Save automation rules"""
         try:
             with open(self.rules_file, 'w') as f:
                 json.dump(self.rules, f, indent=2)
@@ -5883,7 +5612,6 @@ class AutomationRulesEngine:
             pass
 
     def _create_default_rules(self):
-        """Create default automation rules"""
         self.rules = [
             {
                 'id': 'auto_clean_high_memory',
@@ -5930,18 +5658,15 @@ class AutomationRulesEngine:
         self._save_rules()
 
     def add_rule(self, rule):
-        """Add a custom automation rule"""
         rule['id'] = f"custom_{len(self.rules)}_{int(time.time())}"
         self.rules.append(rule)
         self._save_rules()
 
     def remove_rule(self, rule_id):
-        """Remove a rule"""
         self.rules = [r for r in self.rules if r['id'] != rule_id]
         self._save_rules()
 
     def evaluate_rules(self):
-        """Evaluate all enabled rules"""
         if not self.enabled:
             return
 
@@ -5958,7 +5683,6 @@ class AutomationRulesEngine:
                 self._execute_actions(rule)
 
     def _evaluate_trigger(self, trigger):
-        """Evaluate a trigger condition"""
         trigger_type = trigger.get('type')
 
         if trigger_type == 'threshold':
@@ -5994,7 +5718,6 @@ class AutomationRulesEngine:
         return False
 
     def _execute_actions(self, rule):
-        """Execute rule actions"""
         for action in rule.get('actions', []):
             try:
                 action_type = action.get('type')
@@ -6027,7 +5750,6 @@ class AutomationRulesEngine:
 AUTOMATION_ENGINE = AutomationRulesEngine()
 
 class ResourceForecaster:
-    """Predictive resource usage and capacity planning"""
     def __init__(self):
         self.history_hours = 24
         self.cpu_history = deque(maxlen=self.history_hours * 60)
@@ -6038,7 +5760,6 @@ class ResourceForecaster:
         self.last_disk_usage = None
 
     def record_usage(self):
-        """Record current resource usage"""
         try:
             self.cpu_history.append({
                 'timestamp': time.time(),
@@ -6064,7 +5785,6 @@ class ResourceForecaster:
             pass
 
     def forecast_cpu(self, hours_ahead=1):
-        """Forecast CPU usage N hours ahead"""
         if len(self.cpu_history) < 60:
             return None
 
@@ -6084,7 +5804,6 @@ class ResourceForecaster:
             return None
 
     def forecast_memory(self, hours_ahead=1):
-        """Forecast memory usage N hours ahead"""
         if len(self.memory_history) < 60:
             return None
 
@@ -6104,7 +5823,6 @@ class ResourceForecaster:
             return None
 
     def forecast_disk_full(self):
-        """Forecast when disk will be full"""
         if len(self.disk_growth_history) < 24:
             return None
 
@@ -6132,7 +5850,6 @@ class ResourceForecaster:
             return None
 
     def get_capacity_warnings(self):
-        """Get capacity planning warnings"""
         warnings = []
 
         cpu_forecast = self.forecast_cpu(hours_ahead=2)
@@ -6152,7 +5869,6 @@ class ResourceForecaster:
 RESOURCE_FORECASTER = ResourceForecaster()
 
 class SecurityScanner:
-    """Basic security scanning and suspicious activity detection"""
     def __init__(self):
         self.enabled = True
         self.scan_interval = 600
@@ -6171,7 +5887,6 @@ class SecurityScanner:
         }
 
     def scan(self):
-        """Perform security scan"""
         if not self.enabled:
             return
 
@@ -6195,7 +5910,6 @@ class SecurityScanner:
         LOG_MANAGER.info(f"Security scan complete - {len(self.threats)} threats detected")
 
     def _scan_process(self, proc):
-        """Scan a single process"""
         try:
             name = (proc.info.get('name') or '').lower()
             exe = proc.info.get('exe', '')
@@ -6228,7 +5942,6 @@ class SecurityScanner:
             pass
 
     def _scan_startup(self):
-        """Scan startup items for suspicious entries"""
         try:
             startup_items = STARTUP_OPT.get_startup_items()
             for item in startup_items:
@@ -6247,7 +5960,6 @@ class SecurityScanner:
             pass
 
     def get_security_score(self):
-        """Calculate security score (0-100)"""
         score = 100
 
         for threat in self.threats:
@@ -6261,7 +5973,6 @@ class SecurityScanner:
         return max(0, score)
 
     def quarantine_process(self, pid):
-        """Suspend a suspicious process"""
         try:
             p = psutil.Process(pid)
             p.suspend()
@@ -6273,7 +5984,6 @@ class SecurityScanner:
 SECURITY_SCANNER = SecurityScanner()
 
 class PerformanceVisualizer:
-    """Real-time performance visualization data generator"""
     def __init__(self):
         self.graph_data = {
             'cpu': deque(maxlen=60),
@@ -6290,7 +6000,6 @@ class PerformanceVisualizer:
         self.last_net_io = None
 
     def update(self):
-        """Update all graph data"""
         timestamp = time.time()
 
         self.graph_data['cpu'].append({
@@ -6347,7 +6056,6 @@ class PerformanceVisualizer:
             })
 
     def get_graph_data(self, metric, seconds=60):
-        """Get graph data for a specific metric"""
         if metric in self.graph_data:
             data = list(self.graph_data[metric])
             cutoff = time.time() - seconds
@@ -6355,7 +6063,6 @@ class PerformanceVisualizer:
         return []
 
     def get_all_current_values(self):
-        """Get current values for all metrics"""
         current = {}
         for metric, data in self.graph_data.items():
             if data:
@@ -6365,7 +6072,6 @@ class PerformanceVisualizer:
 PERF_VISUALIZER = PerformanceVisualizer()
 
 class PerformanceProfileManager:
-    """Manage and switch between performance profiles"""
     def __init__(self):
         self.profiles = {}
         self.current_profile = None
@@ -6375,7 +6081,6 @@ class PerformanceProfileManager:
         self._load_profiles()
 
     def _create_default_profiles(self):
-        """Create default performance profiles"""
         self.profiles = {
             'Balanced': {
                 'name': 'Balanced',
@@ -6455,7 +6160,6 @@ class PerformanceProfileManager:
         }
 
     def _load_profiles(self):
-        """Load custom profiles"""
         try:
             if os.path.exists(self.profiles_file):
                 with open(self.profiles_file, 'r') as f:
@@ -6465,7 +6169,6 @@ class PerformanceProfileManager:
             pass
 
     def _save_profiles(self):
-        """Save custom profiles"""
         try:
             custom = {k: v for k, v in self.profiles.items()
                      if k not in ['Balanced', 'Performance', 'Gaming', 'PowerSaver', 'Silent']}
@@ -6475,7 +6178,6 @@ class PerformanceProfileManager:
             pass
 
     def apply_profile(self, profile_name):
-        """Apply a performance profile"""
         if profile_name not in self.profiles:
             return False
 
@@ -6503,7 +6205,6 @@ class PerformanceProfileManager:
             return False
 
     def create_custom_profile(self, name, description, settings):
-        """Create a custom profile"""
         self.profiles[name] = {
             'name': name,
             'description': description,
@@ -6514,7 +6215,6 @@ class PerformanceProfileManager:
         LOG_MANAGER.info(f"Created custom profile: {name}")
 
     def delete_profile(self, name):
-        """Delete a custom profile"""
         if name in self.profiles and self.profiles[name].get('custom', False):
             del self.profiles[name]
             self._save_profiles()
@@ -6522,7 +6222,6 @@ class PerformanceProfileManager:
         return False
 
     def get_current_settings(self):
-        """Get current system settings as a profile"""
         return {
             'priority_balancer': PRIORITY_BALANCER.enabled,
             'mem_optimizer': MEM_OPTIMIZER.enabled,
@@ -6537,7 +6236,6 @@ class PerformanceProfileManager:
 PROFILE_MANAGER = PerformanceProfileManager()
 
 class NotificationCenter:
-    """Smart notification system with priority and categorization"""
     def __init__(self):
         self.enabled = True
         self.notifications = deque(maxlen=100)
@@ -6549,7 +6247,6 @@ class NotificationCenter:
         self.sound_enabled = False
 
     def notify(self, message, priority='medium', category='system', details=None):
-        """Create a notification"""
         if not self.enabled:
             return
 
@@ -6573,51 +6270,42 @@ class NotificationCenter:
         return notification['id']
 
     def _should_display(self, notification):
-        """Check if notification should be displayed"""
         priority_index = self.priority_levels.index(notification['priority'])
         min_index = self.priority_levels.index(self.min_priority)
         return priority_index >= min_index
 
     def _display_notification(self, notification):
-        """Display notification (would integrate with UI)"""
         pass
 
     def mark_read(self, notification_id):
-        """Mark notification as read"""
         for notif in self.notifications:
             if notif['id'] == notification_id:
                 notif['read'] = True
                 break
 
     def dismiss(self, notification_id):
-        """Dismiss a notification"""
         for notif in self.notifications:
             if notif['id'] == notification_id:
                 notif['dismissed'] = True
                 break
 
     def get_unread(self):
-        """Get unread notifications"""
         return [n for n in self.notifications if not n['read']]
 
     def get_by_category(self, category):
-        """Get notifications by category"""
         return [n for n in self.notifications if n['category'] == category]
 
     def get_by_priority(self, min_priority='medium'):
-        """Get notifications above a priority level"""
         min_index = self.priority_levels.index(min_priority)
         return [n for n in self.notifications
                 if self.priority_levels.index(n['priority']) >= min_index]
 
     def clear_all(self):
-        """Clear all notifications"""
         self.notifications.clear()
 
 NOTIFICATION_CENTER = NotificationCenter()
 
 class MaintenanceScheduler:
-    """Automated maintenance task scheduler"""
     def __init__(self):
         self.enabled = True
         self.tasks = {}
@@ -6628,7 +6316,6 @@ class MaintenanceScheduler:
         self._load_schedule()
 
     def _create_default_schedule(self):
-        """Create default maintenance tasks"""
         self.tasks = {
             'cleanup_temp': {
                 'name': 'Clean Temp Files',
@@ -6675,7 +6362,6 @@ class MaintenanceScheduler:
         }
 
     def _load_schedule(self):
-        """Load maintenance schedule"""
         try:
             if os.path.exists(self.schedule_file):
                 with open(self.schedule_file, 'r') as f:
@@ -6689,7 +6375,6 @@ class MaintenanceScheduler:
             pass
 
     def _save_schedule(self):
-        """Save maintenance schedule"""
         try:
             data = {}
             for task_id, task in self.tasks.items():
@@ -6704,7 +6389,6 @@ class MaintenanceScheduler:
             pass
 
     def run_due_tasks(self):
-        """Run maintenance tasks that are due"""
         if not self.enabled:
             return
 
@@ -6733,7 +6417,6 @@ class MaintenanceScheduler:
         self._save_schedule()
 
     def _health_check(self):
-        """Perform health check"""
         health = HEALTH_ANALYZER.analyze()
         if health < 50:
             NOTIFICATION_CENTER.notify(
@@ -6744,19 +6427,16 @@ class MaintenanceScheduler:
             )
 
     def set_task_enabled(self, task_id, enabled):
-        """Enable/disable a maintenance task"""
         if task_id in self.tasks:
             self.tasks[task_id]['enabled'] = enabled
             self._save_schedule()
 
     def set_task_interval(self, task_id, interval_seconds):
-        """Set task interval"""
         if task_id in self.tasks:
             self.tasks[task_id]['interval'] = interval_seconds
             self._save_schedule()
 
     def run_task_now(self, task_id):
-        """Manually run a task immediately"""
         if task_id in self.tasks:
             try:
                 self.tasks[task_id]['action']()
@@ -6770,7 +6450,6 @@ class MaintenanceScheduler:
 MAINTENANCE_SCHEDULER = MaintenanceScheduler()
 
 class PowerEfficiencyAnalyzer:
-    """Analyze and optimize power efficiency"""
     def __init__(self):
         self.enabled = True
         self.power_samples = deque(maxlen=60)
@@ -6778,7 +6457,6 @@ class PowerEfficiencyAnalyzer:
         self.power_wasters = []
 
     def analyze(self):
-        """Analyze power efficiency"""
         self.power_wasters = []
 
         cpu_percent = psutil.cpu_percent(interval=1)
@@ -6857,11 +6535,9 @@ class PowerEfficiencyAnalyzer:
         return self.efficiency_score
 
     def get_recommendations(self):
-        """Get power saving recommendations"""
         return [w['recommendation'] for w in self.power_wasters]
 
     def estimate_battery_impact(self):
-        """Estimate battery life impact"""
         if self.efficiency_score >= 80:
             return "Excellent - Maximum battery life"
         elif self.efficiency_score >= 60:
@@ -6872,7 +6548,6 @@ class PowerEfficiencyAnalyzer:
             return "Poor - Significant battery drain (40%+ reduction)"
 
     def apply_power_saving(self):
-        """Apply aggressive power saving measures"""
         try:
             POWER_SAVER.enabled = True
             CPU_LIMITER.enabled = True
@@ -6893,7 +6568,6 @@ class PowerEfficiencyAnalyzer:
 POWER_ANALYZER = PowerEfficiencyAnalyzer()
 
 class SystemSnapshotManager:
-    """Create and restore system optimization snapshots"""
     def __init__(self):
         self.snapshots = []
         self.snapshot_dir = os.path.join(APP_DIR, 'snapshots')
@@ -6902,7 +6576,6 @@ class SystemSnapshotManager:
         self._load_snapshots()
 
     def create_snapshot(self, name=None, description=""):
-        """Create a snapshot of current system state"""
         if name is None:
             name = f"Snapshot_{time.strftime('%Y%m%d_%H%M%S')}"
 
@@ -6950,7 +6623,6 @@ class SystemSnapshotManager:
         return snapshot['id']
 
     def restore_snapshot(self, snapshot_id):
-        """Restore system to a previous snapshot"""
         snapshot = next((s for s in self.snapshots if s['id'] == snapshot_id), None)
         if not snapshot:
             return False
@@ -6987,7 +6659,6 @@ class SystemSnapshotManager:
             return False
 
     def delete_snapshot(self, snapshot_id):
-        """Delete a snapshot"""
         self.snapshots = [s for s in self.snapshots if s['id'] != snapshot_id]
 
         snapshot_file = os.path.join(self.snapshot_dir, f"{snapshot_id}.json")
@@ -6995,7 +6666,6 @@ class SystemSnapshotManager:
             os.remove(snapshot_file)
 
     def compare_snapshots(self, snapshot_id1, snapshot_id2):
-        """Compare two snapshots"""
         snap1 = next((s for s in self.snapshots if s['id'] == snapshot_id1), None)
         snap2 = next((s for s in self.snapshots if s['id'] == snapshot_id2), None)
 
@@ -7017,7 +6687,6 @@ class SystemSnapshotManager:
         return comparison
 
     def _save_snapshot(self, snapshot):
-        """Save snapshot to file"""
         try:
             snapshot_file = os.path.join(self.snapshot_dir, f"{snapshot['id']}.json")
             with open(snapshot_file, 'w') as f:
@@ -7026,7 +6695,6 @@ class SystemSnapshotManager:
             pass
 
     def _load_snapshots(self):
-        """Load all snapshots from disk"""
         try:
             for filename in os.listdir(self.snapshot_dir):
                 if filename.endswith('.json'):
@@ -7040,7 +6708,6 @@ class SystemSnapshotManager:
 SNAPSHOT_MANAGER = SystemSnapshotManager()
 
 class AnomalyDetector:
-    """AI-powered anomaly detection for unusual system behavior"""
     def __init__(self):
         self.enabled = True
         self.baselines = {}
@@ -7053,7 +6720,6 @@ class AnomalyDetector:
         ]
 
     def record_baseline(self):
-        """Record baseline metrics during normal operation"""
         try:
             metrics = {
                 'cpu_percent': psutil.cpu_percent(interval=1),
@@ -7096,7 +6762,6 @@ class AnomalyDetector:
             pass
 
     def detect_anomalies(self):
-        """Detect anomalies in current system state"""
         if not self.enabled or not self.baselines:
             return []
 
@@ -7147,7 +6812,6 @@ class AnomalyDetector:
         return self.anomalies
 
     def get_anomaly_report(self):
-        """Get detailed anomaly report"""
         return {
             'total_anomalies': len(self.anomalies),
             'by_severity': {
@@ -7161,14 +6825,12 @@ class AnomalyDetector:
 ANOMALY_DETECTOR = AnomalyDetector()
 
 class ResourceAllocationOptimizer:
-    """Intelligent resource allocation across applications"""
     def __init__(self):
         self.enabled = True
         self.allocation_strategy = 'balanced'
         self.app_priorities = {}
 
     def optimize_allocation(self):
-        """Optimize resource allocation across running applications"""
         if not self.enabled:
             return
 
@@ -7202,7 +6864,6 @@ class ResourceAllocationOptimizer:
             LOG_MANAGER.error(f"Resource allocation failed: {e}")
 
     def _apply_balanced_allocation(self, processes):
-        """Balanced allocation - fair distribution"""
         for proc in processes[:5]:
             if proc['priority'] != 'high':
                 try:
@@ -7212,7 +6873,6 @@ class ResourceAllocationOptimizer:
                     pass
 
     def _apply_performance_allocation(self, processes):
-        """Performance allocation - prioritize user-defined high-priority apps"""
         for proc in processes:
             try:
                 p = psutil.Process(proc['pid'])
@@ -7224,7 +6884,6 @@ class ResourceAllocationOptimizer:
                 pass
 
     def _apply_efficiency_allocation(self, processes):
-        """Efficiency allocation - limit resource-hungry apps"""
         for proc in processes[:3]:
             try:
                 p = psutil.Process(proc['pid'])
@@ -7233,20 +6892,17 @@ class ResourceAllocationOptimizer:
                 pass
 
     def set_app_priority(self, app_name, priority='normal'):
-        """Set priority level for an application"""
         self.app_priorities[app_name] = priority
         LOG_MANAGER.info(f"Set {app_name} priority to {priority}")
 
 RESOURCE_OPTIMIZER = ResourceAllocationOptimizer()
 
 class ReportGenerator:
-    """Generate comprehensive system reports in HTML/PDF"""
     def __init__(self):
         self.report_dir = os.path.join(APP_DIR, 'reports')
         os.makedirs(self.report_dir, exist_ok=True)
 
     def generate_system_report(self, format='html'):
-        """Generate comprehensive system health report"""
         timestamp = time.strftime('%Y%m%d_%H%M%S')
 
         report_data = {
@@ -7267,7 +6923,6 @@ class ReportGenerator:
             return None
 
     def _get_system_info(self):
-        """Get system information"""
         return {
             'os': 'Windows',
             'cpu_count': multiprocessing.cpu_count(),
@@ -7277,7 +6932,6 @@ class ReportGenerator:
         }
 
     def _get_health_data(self):
-        """Get health analysis data"""
         health = HEALTH_ANALYZER.analyze()
         return {
             'overall_score': health,
@@ -7287,7 +6941,6 @@ class ReportGenerator:
         }
 
     def _get_performance_data(self):
-        """Get performance metrics"""
         return {
             'cpu_percent': psutil.cpu_percent(),
             'memory_percent': psutil.virtual_memory().percent,
@@ -7297,7 +6950,6 @@ class ReportGenerator:
         }
 
     def _get_optimization_status(self):
-        """Get optimization feature status"""
         return {
             'priority_balancer': PRIORITY_BALANCER.enabled,
             'mem_optimizer': MEM_OPTIMIZER.enabled,
@@ -7308,7 +6960,6 @@ class ReportGenerator:
         }
 
     def _get_security_data(self):
-        """Get security data"""
         return {
             'security_score': SECURITY_SCANNER.get_security_score(),
             'threats_detected': len(SECURITY_SCANNER.threats),
@@ -7316,7 +6967,6 @@ class ReportGenerator:
         }
 
     def _get_recommendations(self):
-        """Get all recommendations"""
         recs = []
         recs.extend(HEALTH_ANALYZER.get_recommendations())
         recs.extend(AI_OPTIMIZER.generate_suggestions())
@@ -7324,7 +6974,6 @@ class ReportGenerator:
         return recs[:10]
 
     def _generate_html_report(self, data, timestamp):
-        """Generate HTML report"""
         html = f"""
 <!DOCTYPE html>
 <html>
@@ -7423,7 +7072,6 @@ class ReportGenerator:
         return filepath
 
     def _generate_json_report(self, data, timestamp):
-        """Generate JSON report"""
         filename = f"report_{timestamp}.json"
         filepath = os.path.join(self.report_dir, filename)
         with open(filepath, 'w') as f:
@@ -7433,14 +7081,12 @@ class ReportGenerator:
 REPORT_GENERATOR = ReportGenerator()
 
 class DashboardDataAggregator:
-    """Unified dashboard data aggregator - combines all metrics and features"""
     def __init__(self):
         self.last_update = 0
         self.update_interval = 1.0
         self.cached_data = {}
 
     def get_complete_dashboard_data(self):
-        """Get all dashboard data in one unified structure"""
         now = time.time()
 
         if now - self.last_update < self.update_interval:
@@ -7531,7 +7177,6 @@ class DashboardDataAggregator:
         return self.cached_data
 
     def _get_next_task_time(self):
-        """Calculate when next maintenance task is due"""
         try:
             now = time.time()
             next_times = []
@@ -7554,7 +7199,6 @@ class DashboardDataAggregator:
             return "Unknown"
 
     def get_summary_stats(self):
-        """Get condensed summary statistics"""
         data = self.get_complete_dashboard_data()
         return {
             'health_score': data['health']['overall_score'],
@@ -7574,7 +7218,6 @@ class DashboardDataAggregator:
 DASHBOARD = DashboardDataAggregator()
 
 class UnifiedCommandSystem:
-    """Execute commands and automation across all subsystems"""
     def __init__(self):
         self.command_history = deque(maxlen=100)
 
@@ -7593,7 +7236,6 @@ class UnifiedCommandSystem:
         }
 
     def execute(self, command_name, **kwargs):
-        """Execute a command"""
         if command_name not in self.commands:
             return {'success': False, 'error': 'Unknown command'}
 
@@ -7614,7 +7256,6 @@ class UnifiedCommandSystem:
             return {'success': False, 'error': str(e)}
 
     def _enable_feature(self, feature):
-        """Enable an optimization feature"""
         feature_map = {
             'priority_balancer': PRIORITY_BALANCER,
             'mem_optimizer': MEM_OPTIMIZER,
@@ -7629,7 +7270,6 @@ class UnifiedCommandSystem:
         return {'success': False, 'error': 'Unknown feature'}
 
     def _disable_feature(self, feature):
-        """Disable an optimization feature"""
         feature_map = {
             'priority_balancer': PRIORITY_BALANCER,
             'mem_optimizer': MEM_OPTIMIZER,
@@ -7644,17 +7284,14 @@ class UnifiedCommandSystem:
         return {'success': False, 'error': 'Unknown feature'}
 
     def _apply_profile(self, profile_name):
-        """Apply a performance profile"""
         success = PROFILE_MANAGER.apply_profile(profile_name)
         return {'success': success, 'message': f'Applied profile: {profile_name}' if success else 'Failed'}
 
     def _run_benchmark(self):
-        """Run benchmark suite"""
         results = BENCHMARK_SUITE.run_full_benchmark()
         return {'success': True, 'results': results}
 
     def _cleanup(self, target='temp_files'):
-        """Run cleanup"""
         if target == 'temp_files':
             files, bytes_freed = SYSTEM_CLEANER.clean_temp_files()
             return {'success': True, 'files_deleted': files, 'mb_freed': bytes_freed / (1024*1024)}
@@ -7664,46 +7301,38 @@ class UnifiedCommandSystem:
         return {'success': False, 'error': 'Unknown cleanup target'}
 
     def _create_snapshot(self, name=None, description=''):
-        """Create system snapshot"""
         snapshot_id = SNAPSHOT_MANAGER.create_snapshot(name, description)
         return {'success': True, 'snapshot_id': snapshot_id}
 
     def _restore_snapshot(self, snapshot_id):
-        """Restore snapshot"""
         success = SNAPSHOT_MANAGER.restore_snapshot(snapshot_id)
         return {'success': success}
 
     def _generate_report(self, format='html'):
-        """Generate system report"""
         filepath = REPORT_GENERATOR.generate_system_report(format)
         return {'success': True, 'filepath': filepath}
 
     def _scan_security(self):
-        """Run security scan"""
         SECURITY_SCANNER.scan()
         return {'success': True, 'threats': len(SECURITY_SCANNER.threats)}
 
     def _optimize_resources(self):
-        """Optimize resource allocation"""
         RESOURCE_OPTIMIZER.optimize_allocation()
         return {'success': True}
 
     def _analyze_health(self):
-        """Analyze system health"""
         score = HEALTH_ANALYZER.analyze()
         return {'success': True, 'health_score': score}
 
 COMMAND_SYSTEM = UnifiedCommandSystem()
 
 class PerformanceImpactTracker:
-    """Track the impact of optimizations on system performance"""
     def __init__(self):
         self.baseline_metrics = None
         self.current_metrics = {}
         self.improvement_history = deque(maxlen=24)
 
     def set_baseline(self):
-        """Set baseline metrics before optimizations"""
         self.baseline_metrics = {
             'timestamp': time.time(),
             'cpu_avg': psutil.cpu_percent(interval=5),
@@ -7720,7 +7349,6 @@ class PerformanceImpactTracker:
         return self.baseline_metrics
 
     def measure_current(self):
-        """Measure current performance"""
         self.current_metrics = {
             'timestamp': time.time(),
             'cpu_avg': psutil.cpu_percent(interval=5),
@@ -7736,7 +7364,6 @@ class PerformanceImpactTracker:
         return self.current_metrics
 
     def calculate_impact(self):
-        """Calculate optimization impact vs baseline"""
         if not self.baseline_metrics:
             return None
 
@@ -7772,7 +7399,6 @@ class PerformanceImpactTracker:
         return impact
 
     def get_impact_report(self):
-        """Get comprehensive impact report"""
         if not self.baseline_metrics:
             return {'error': 'No baseline set'}
 
@@ -7786,7 +7412,6 @@ class PerformanceImpactTracker:
         }
 
     def _get_impact_recommendations(self, impact):
-        """Get recommendations based on impact"""
         recs = []
 
         if impact['cpu_change'] < 0:
@@ -7809,7 +7434,6 @@ class PerformanceImpactTracker:
 IMPACT_TRACKER = PerformanceImpactTracker()
 
 class SystemStabilityMonitor:
-    """Monitor system stability and uptime"""
     def __init__(self):
         self.start_time = time.time()
         self.crash_detection_enabled = True
@@ -7817,7 +7441,6 @@ class SystemStabilityMonitor:
         self.last_health_check = 0
 
     def record_event(self, event_type, severity='info', details=''):
-        """Record a stability event"""
         event = {
             'timestamp': time.time(),
             'type': event_type,
@@ -7835,7 +7458,6 @@ class SystemStabilityMonitor:
             )
 
     def check_stability(self):
-        """Perform stability check"""
         now = time.time()
 
         if now - self.last_health_check < 300:
@@ -7885,7 +7507,6 @@ class SystemStabilityMonitor:
         }
 
     def get_uptime_report(self):
-        """Get system uptime and OptiCores runtime"""
         now = time.time()
         system_boot = psutil.boot_time()
 
@@ -7899,7 +7520,6 @@ class SystemStabilityMonitor:
 STABILITY_MONITOR = SystemStabilityMonitor()
 
 class FPSOverlay:
-    """Transparent overlay showing FPS and system stats"""
     def __init__(self):
         self.enabled = False
         self.window = None
@@ -7910,7 +7530,6 @@ class FPSOverlay:
         self.update_interval = 500
 
     def create_window(self, parent=None):
-        """Create the overlay window"""
         if self.window:
             return
 
@@ -7972,7 +7591,6 @@ class FPSOverlay:
             self.position = (x, y)
 
     def update_stats(self):
-        """Update overlay statistics"""
         if not self.window or not self.enabled:
             return
 
@@ -8005,7 +7623,6 @@ class FPSOverlay:
             pass
 
     def _update_loop(self):
-        """Background update loop"""
         while not self._stop_event.is_set():
             if self.enabled and self.window:
                 try:
@@ -8015,7 +7632,6 @@ class FPSOverlay:
             self._stop_event.wait(self.update_interval / 1000)
 
     def show(self):
-        """Show the overlay"""
         if not self.window:
             self.create_window()
         self.enabled = True
@@ -8027,21 +7643,18 @@ class FPSOverlay:
             self._update_thread.start()
 
     def hide(self):
-        """Hide the overlay"""
         self.enabled = False
         self._stop_event.set()
         if self.window:
             self.window.withdraw()
 
     def toggle(self):
-        """Toggle overlay visibility"""
         if self.enabled:
             self.hide()
         else:
             self.show()
 
     def destroy(self):
-        """Destroy the overlay window"""
         self.enabled = False
         self._stop_event.set()
         if self.window:
@@ -8051,7 +7664,6 @@ class FPSOverlay:
 FPS_OVERLAY = FPSOverlay()
 
 class PerformanceHistory:
-    """Log and export performance metrics over time"""
     def __init__(self):
         self.enabled = False
         self.history = []
@@ -8061,7 +7673,6 @@ class PerformanceHistory:
         self.log_interval = 2.0
 
     def start_logging(self, interval=1.0):
-        """Start logging performance data"""
         self.log_interval = interval
         self.enabled = True
         self._stop_event.clear()
@@ -8078,12 +7689,10 @@ class PerformanceHistory:
         self._log_thread.start()
 
     def stop_logging(self):
-        """Stop logging"""
         self.enabled = False
         self._stop_event.set()
 
     def _log_sample(self):
-        """Log a single performance sample"""
         try:
             sample = {
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -8110,7 +7719,6 @@ class PerformanceHistory:
             pass
 
     def export_csv(self, filepath=None):
-        """Export history to CSV file"""
         if not filepath:
             filepath = os.path.join(APP_DIR, f"perf_history_{time.strftime('%Y%m%d_%H%M%S')}.csv")
 
@@ -8124,7 +7732,6 @@ class PerformanceHistory:
             return None
 
     def export_json(self, filepath=None):
-        """Export history to JSON file"""
         if not filepath:
             filepath = os.path.join(APP_DIR, f"perf_history_{time.strftime('%Y%m%d_%H%M%S')}.json")
 
@@ -8136,7 +7743,6 @@ class PerformanceHistory:
             return None
 
     def get_averages(self, last_n=60):
-        """Get average stats for last N samples"""
         if not self.history:
             return {'cpu': 0, 'ram': 0, 'gpu': 0}
 
@@ -8148,13 +7754,11 @@ class PerformanceHistory:
         }
 
     def clear(self):
-        """Clear history"""
         self.history = []
 
 PERF_HISTORY = PerformanceHistory()
 
 class ProcessTimeline:
-    """Track when processes start and stop"""
     def __init__(self):
         self.enabled = False
         self.events = []
@@ -8165,7 +7769,6 @@ class ProcessTimeline:
         self.check_interval = 5.0
 
     def start_monitoring(self):
-        """Start monitoring process changes"""
         self.enabled = True
         self._stop_event.clear()
 
@@ -8183,12 +7786,10 @@ class ProcessTimeline:
         self._monitor_thread.start()
 
     def stop_monitoring(self):
-        """Stop monitoring"""
         self.enabled = False
         self._stop_event.set()
 
     def _check_changes(self):
-        """Check for process changes"""
         try:
             current_pids = {}
             for p in psutil.process_iter(['pid', 'name']):
@@ -8211,7 +7812,6 @@ class ProcessTimeline:
             pass
 
     def _log_event(self, event_type, pid, name):
-        """Log a process event"""
         self.events.append({
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
             'event': event_type,
@@ -8223,16 +7823,13 @@ class ProcessTimeline:
             self.events = self.events[-self.max_events:]
 
     def get_recent_events(self, count=20):
-        """Get recent process events"""
         return list(reversed(self.events[-count:]))
 
     def get_starts(self, count=20):
-        """Get recent process starts"""
         starts = [e for e in self.events if e['event'] == 'start']
         return list(reversed(starts[-count:]))
 
     def export_timeline(self, filepath=None):
-        """Export timeline to file"""
         if not filepath:
             filepath = os.path.join(APP_DIR, f"process_timeline_{time.strftime('%Y%m%d_%H%M%S')}.json")
 
@@ -8246,7 +7843,6 @@ class ProcessTimeline:
 PROC_TIMELINE = ProcessTimeline()
 
 class AlertSystem:
-    """Notify when performance thresholds are exceeded"""
     def __init__(self):
         self.enabled = False
         self.thresholds = {
@@ -8262,7 +7858,6 @@ class AlertSystem:
         self.alert_callback = None
 
     def start_monitoring(self, callback=None):
-        """Start alert monitoring"""
         self.enabled = True
         self.alert_callback = callback
         self._stop_event.clear()
@@ -8279,12 +7874,10 @@ class AlertSystem:
         self._monitor_thread.start()
 
     def stop_monitoring(self):
-        """Stop monitoring"""
         self.enabled = False
         self._stop_event.set()
 
     def _check_thresholds(self):
-        """Check if any thresholds exceeded"""
         try:
             now = time.time()
 
@@ -8310,7 +7903,6 @@ class AlertSystem:
             pass
 
     def _trigger_alert(self, alert_type, value):
-        """Trigger an alert"""
         now = time.time()
 
         if alert_type in self._last_alerts:
@@ -8336,14 +7928,12 @@ class AlertSystem:
             pass
 
     def set_threshold(self, alert_type, value):
-        """Set a threshold value"""
         if alert_type in self.thresholds:
             self.thresholds[alert_type] = value
 
 ALERT_SYSTEM = AlertSystem()
 
 class AIChatEngine:
-    """AI-powered question answering for system optimization"""
     def __init__(self):
         self.chat_history = deque(maxlen=50)
         self.context = {}
@@ -8416,7 +8006,6 @@ class AIChatEngine:
         }
 
     def ask(self, question):
-        """Process a question and return an AI response"""
         question_lower = question.lower().strip()
 
         if not question_lower:
@@ -8456,7 +8045,6 @@ class AIChatEngine:
         return response
 
     def _create_response(self, text, response_type='info', actions=None, data=None):
-        """Create a structured response"""
         return {
             'text': text,
             'type': response_type,
@@ -8466,7 +8054,6 @@ class AIChatEngine:
         }
 
     def _get_status_response(self, question):
-        """Get overall system status"""
         try:
             cpu = psutil.cpu_percent(interval=0.1)
             mem = psutil.virtual_memory()
@@ -8497,7 +8084,6 @@ class AIChatEngine:
             return self._create_response("I couldn't retrieve system status right now. Please try again.", 'error')
 
     def _get_cpu_response(self, question):
-        """Get CPU-specific information"""
         try:
             cpu_percent = psutil.cpu_percent(interval=0.5)
             cpu_count = psutil.cpu_count()
@@ -8525,7 +8111,6 @@ class AIChatEngine:
             return self._create_response(f"Error getting CPU info: {str(e)}", 'error')
 
     def _get_memory_response(self, question):
-        """Get memory-specific information"""
         try:
             mem = psutil.virtual_memory()
             swap = psutil.swap_memory()
@@ -8553,7 +8138,6 @@ class AIChatEngine:
             return self._create_response(f"Error getting memory info: {str(e)}", 'error')
 
     def _get_disk_response(self, question):
-        """Get disk-specific information"""
         try:
             text = f"💽 **Disk Status**\n\n"
 
@@ -8577,7 +8161,6 @@ class AIChatEngine:
             return self._create_response(f"Error getting disk info: {str(e)}", 'error')
 
     def _get_gpu_response(self, question):
-        """Get GPU-specific information"""
         try:
             if GPUtil:
                 gpus = GPUtil.getGPUs()
@@ -8604,7 +8187,6 @@ class AIChatEngine:
             return self._create_response(f"Error getting GPU info: {str(e)}", 'error')
 
     def _get_optibalance_response(self, question):
-        """Explain OptiBalance feature"""
         enabled = PRIORITY_BALANCER.enabled if 'PRIORITY_BALANCER' in dir() else False
         stats = PRIORITY_BALANCER.get_stats() if 'PRIORITY_BALANCER' in dir() else {}
 
@@ -8628,7 +8210,6 @@ class AIChatEngine:
         return self._create_response(text, 'info')
 
     def _get_gamemode_response(self, question):
-        """Explain Game Mode feature"""
         text = f"🎮 **Game Mode**\n\n"
         text += "Game Mode automatically optimizes your system when a game is detected:\n\n"
         text += "• Boosts game process priority\n"
@@ -8651,7 +8232,6 @@ class AIChatEngine:
         return self._create_response(text, 'info')
 
     def _get_boost_response(self, question):
-        """Provide performance boost suggestions"""
         cpu = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory().percent
 
@@ -8679,7 +8259,6 @@ class AIChatEngine:
         return self._create_response(text, 'info')
 
     def _get_clean_response(self, question):
-        """Provide cleaning information"""
         try:
             temp_dir = os.environ.get('TEMP', '')
             temp_size = 0
@@ -8707,7 +8286,6 @@ class AIChatEngine:
             )
 
     def _get_optimize_response(self, question):
-        """Provide optimization actions"""
         cpu = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory().percent
 
@@ -8733,7 +8311,6 @@ class AIChatEngine:
         return self._create_response(text, 'action')
 
     def _get_slow_response(self, question):
-        """Handle slow system complaints"""
         cpu = psutil.cpu_percent(interval=0.5)
         mem = psutil.virtual_memory()
 
@@ -8772,7 +8349,6 @@ class AIChatEngine:
         return self._create_response(text, 'warning' if issues else 'info')
 
     def _get_explain_response(self, question):
-        """Explain features based on the question"""
         q_lower = question.lower()
 
         explanations = {
@@ -8796,7 +8372,6 @@ class AIChatEngine:
         )
 
     def _get_howto_response(self, question):
-        """Provide how-to instructions"""
         q_lower = question.lower()
 
         howtos = {
@@ -8823,7 +8398,6 @@ class AIChatEngine:
         )
 
     def _get_greeting_response(self, question):
-        """Respond to greetings"""
         import datetime
         hour = datetime.datetime.now().hour
 
@@ -8846,7 +8420,6 @@ class AIChatEngine:
         )
 
     def _get_thanks_response(self, question):
-        """Respond to thanks"""
         return self._create_response(
             "😊 You're welcome! I'm always here to help optimize your PC.\n\n"
             "Feel free to ask me anything else!",
@@ -8854,7 +8427,6 @@ class AIChatEngine:
         )
 
     def _get_default_response(self, question):
-        """Default response when no pattern matches"""
         cpu = psutil.cpu_percent(interval=0.1)
         mem = psutil.virtual_memory().percent
 
@@ -8872,20 +8444,14 @@ class AIChatEngine:
         )
 
     def get_history(self):
-        """Return chat history"""
         return list(self.chat_history)
 
     def clear_history(self):
-        """Clear chat history"""
         self.chat_history.clear()
 
 AI_CHAT = AIChatEngine()
 
 class SmoothAnimator:
-    """
-    Smooth animation system for OptiCores UI
-    Provides eased transitions, animated counters, and visual effects
-    """
     def __init__(self):
         self._animations = {}
         self._root = None
@@ -8893,43 +8459,28 @@ class SmoothAnimator:
         self._animation_id = 0
 
     def set_root(self, root):
-        """Set the root Tk widget for scheduling animations"""
         self._root = root
 
     def _get_id(self):
-        """Get unique animation ID"""
         self._animation_id += 1
         return self._animation_id
 
     def _ease_out_cubic(self, t):
-        """Cubic ease-out for smooth deceleration"""
         return 1 - pow(1 - t, 3)
 
     def _ease_out_quart(self, t):
-        """Quartic ease-out for snappier feel"""
         return 1 - pow(1 - t, 4)
 
     def _ease_in_out_cubic(self, t):
-        """Ease in-out for smooth symmetric transitions"""
         if t < 0.5:
             return 4 * t * t * t
         else:
             return 1 - pow(-2 * t + 2, 3) / 2
 
     def _lerp(self, a, b, t):
-        """Linear interpolation"""
         return a + (b - a) * t
 
     def animate_progress(self, progress_bar, target_value, duration_ms=400, on_complete=None):
-        """
-        Smoothly animate a CTkProgressBar to target value
-
-        Args:
-            progress_bar: CTkProgressBar widget
-            target_value: Target value (0.0 to 1.0)
-            duration_ms: Animation duration in milliseconds
-            on_complete: Optional callback when animation completes
-        """
         if not self._root or not self._running:
             try:
                 progress_bar.set(target_value)
@@ -8969,17 +8520,6 @@ class SmoothAnimator:
         self._root.after(1, update)
 
     def animate_number(self, label, target_value, duration_ms=500, prefix="", suffix="", decimals=0):
-        """
-        Animate a number counter from current to target value
-
-        Args:
-            label: CTkLabel widget to update
-            target_value: Target number
-            duration_ms: Animation duration
-            prefix: Text prefix (e.g., "CPU: ")
-            suffix: Text suffix (e.g., "%")
-            decimals: Number of decimal places
-        """
         if not self._root or not self._running:
             try:
                 fmt = f"{{:.{decimals}f}}" if decimals > 0 else "{:.0f}"
@@ -9019,10 +8559,6 @@ class SmoothAnimator:
         self._root.after(1, update)
 
     def fade_in(self, widget, duration_ms=300, start_alpha=0.0, end_alpha=1.0):
-        """
-        Fade in a widget by animating its foreground/background colors
-        Note: CTk doesn't support true alpha, so we simulate with color
-        """
         if not self._root or not self._running:
             return
 
@@ -9032,9 +8568,6 @@ class SmoothAnimator:
             pass
 
     def slide_in_from_right(self, widget, duration_ms=300, distance=50):
-        """
-        Slide a widget in from the right
-        """
         if not self._root or not self._running:
             return
 
@@ -9069,17 +8602,6 @@ class SmoothAnimator:
         self._root.after(1, update)
 
     def pulse_widget(self, widget, color1, color2, duration_ms=1000, property_name='fg_color', cycles=3):
-        """
-        Pulse a widget's color between two values
-
-        Args:
-            widget: The widget to animate
-            color1: Starting color (hex)
-            color2: Target color (hex)
-            duration_ms: Duration of one pulse cycle
-            property_name: Color property to animate
-            cycles: Number of pulse cycles (-1 for infinite)
-        """
         if not self._root or not self._running:
             return
 
@@ -9127,9 +8649,6 @@ class SmoothAnimator:
         self._root.after(1, update)
 
     def animate_color(self, widget, from_color, to_color, duration_ms=300, property_name='fg_color'):
-        """
-        Smoothly transition a widget's color
-        """
         if not self._root or not self._running:
             try:
                 widget.configure(**{property_name: to_color})
@@ -9177,9 +8696,6 @@ class SmoothAnimator:
         self._root.after(1, update)
 
     def shake_widget(self, widget, intensity=5, duration_ms=300):
-        """
-        Shake a widget (for error feedback)
-        """
         if not self._root or not self._running:
             return
 
@@ -9215,23 +8731,19 @@ class SmoothAnimator:
         self._root.after(1, update)
 
     def stop_all(self):
-        """Stop all running animations"""
         self._running = False
 
     def resume(self):
-        """Resume animation system"""
         self._running = True
 
 ANIMATOR = SmoothAnimator()
 
 class WelcomeGuide:
-    """Show welcome tutorial on first run"""
     def __init__(self):
         self.config_path = os.path.join(APP_DIR, "first_run.json")
         self.shown = self._check_shown()
 
     def _check_shown(self):
-        """Check if welcome was already shown"""
         try:
             if os.path.exists(self.config_path):
                 with open(self.config_path, 'r') as f:
@@ -9242,7 +8754,6 @@ class WelcomeGuide:
         return False
 
     def _mark_shown(self):
-        """Mark welcome as shown"""
         try:
             with open(self.config_path, 'w') as f:
                 json.dump({'welcome_shown': True}, f)
@@ -9251,7 +8762,6 @@ class WelcomeGuide:
             pass
 
     def show(self, parent):
-        """Show welcome dialog"""
         if self.shown:
             return
 
@@ -9308,7 +8818,6 @@ class WelcomeGuide:
 WELCOME_GUIDE = WelcomeGuide()
 
 def show_help(parent, title, content):
-    """Show a help popup with explanation"""
     dialog = ctk.CTkToplevel(parent)
     dialog.title(f"Help: {title}")
     dialog.geometry("400x250")
@@ -9370,7 +8879,6 @@ EXPANDED_GAMES = {
 }
 
 class DetailedMonitor:
-    """Enhanced monitoring with detailed hardware stats"""
     def __init__(self):
         self.per_core_cpu = []
         self.gpu_vram = 0
@@ -9381,7 +8889,6 @@ class DetailedMonitor:
         self._last_time = 0
 
     def update(self):
-        """Update all detailed stats"""
         try:
             self.per_core_cpu = psutil.cpu_percent(percpu=True)
 
@@ -9412,14 +8919,12 @@ class DetailedMonitor:
             pass
 
     def get_hottest_core(self):
-        """Get the core with highest usage"""
         if not self.per_core_cpu:
             return (0, 0)
         max_usage = max(self.per_core_cpu)
         return (self.per_core_cpu.index(max_usage), max_usage)
 
     def get_stats(self):
-        """Get all stats as dict"""
         return {
             'per_core_cpu': self.per_core_cpu,
             'gpu_vram_mb': self.gpu_vram,
@@ -9431,7 +8936,6 @@ class DetailedMonitor:
 DETAILED_MONITOR = DetailedMonitor()
 
 class AutoCloseApps:
-    """Close non-essential apps when gaming for more resources"""
     closeable_apps = {
         "discord.exe", "spotify.exe", "slack.exe", "teams.exe",
         "chrome.exe", "firefox.exe", "msedge.exe", "opera.exe",
@@ -9443,7 +8947,6 @@ class AutoCloseApps:
         self.closed_apps = []
 
     def close_for_gaming(self, exclude=None):
-        """Close background apps, return count closed"""
         exclude = exclude or set()
         self.closed_apps = []
         count = 0
@@ -9461,7 +8964,6 @@ class AutoCloseApps:
         return count
 
     def get_running_closeable(self):
-        """Get list of closeable apps currently running"""
         running = []
         for proc in psutil.process_iter(['name']):
             try:
@@ -9475,7 +8977,6 @@ class AutoCloseApps:
 AUTO_CLOSE = AutoCloseApps()
 
 class MemoryLeakDetector:
-    """Detect processes with continuously growing memory (potential leaks)"""
     def __init__(self):
         self.enabled = False
         self.memory_history = {}
@@ -9488,7 +8989,6 @@ class MemoryLeakDetector:
         self.check_interval = 10.0
 
     def start_monitoring(self):
-        """Start monitoring for memory leaks"""
         self.enabled = True
         self._stop_event.clear()
 
@@ -9504,12 +9004,10 @@ class MemoryLeakDetector:
         self._monitor_thread.start()
 
     def stop_monitoring(self):
-        """Stop monitoring"""
         self.enabled = False
         self._stop_event.set()
 
     def _sample_all(self):
-        """Sample memory for all processes"""
         try:
             current_pids = set()
 
@@ -9543,7 +9041,6 @@ class MemoryLeakDetector:
             pass
 
     def _is_leaking(self, pid):
-        """Check if a process appears to be leaking memory"""
         if pid not in self.memory_history:
             return False
 
@@ -9564,7 +9061,6 @@ class MemoryLeakDetector:
         return False
 
     def get_leaking_processes(self):
-        """Get list of processes that appear to be leaking memory"""
         leakers = []
 
         for pid in self.memory_history:
@@ -9585,7 +9081,6 @@ class MemoryLeakDetector:
         return leakers
 
     def get_top_memory_users(self, count=10):
-        """Get processes using most memory"""
         users = []
 
         for pid, samples in self.memory_history.items():
@@ -9602,21 +9097,11 @@ class MemoryLeakDetector:
 LEAK_DETECTOR = MemoryLeakDetector()
 
 class RealBenchmark:
-    """
-    Real benchmark algorithms based on industry standards.
-    Similar to Geekbench's methodology:
-    - Compression (zlib)
-    - Cryptography (SHA256)
-    - Prime number sieve
-    - Matrix multiplication
-    - FFT simulation
-    """
     def __init__(self):
         self.results = {}
         self.baseline = 1000
 
     def run_all(self, callback=None):
-        """Run all benchmarks, callback(name, score, max) for progress"""
         tests = [
             ('compression', self.test_compression),
             ('crypto', self.test_crypto),
@@ -9639,7 +9124,6 @@ class RealBenchmark:
         return self.results
 
     def test_compression(self):
-        """Zlib compression benchmark - real compression algorithm"""
         import zlib
 
         data = (b"OptiCores Benchmark Data " * 1000 +
@@ -9663,7 +9147,6 @@ class RealBenchmark:
         return min(score, self.baseline * 3)
 
     def test_crypto(self):
-        """SHA256 hash benchmark - real cryptographic algorithm"""
         import hashlib
 
         data = bytes(range(256)) * 256
@@ -9684,9 +9167,7 @@ class RealBenchmark:
         return min(score, self.baseline * 3)
 
     def test_prime_sieve(self):
-        """Sieve of Eratosthenes - classic CPU benchmark"""
         def sieve(n):
-            """Find all primes up to n"""
             is_prime = [True] * (n + 1)
             is_prime[0] = is_prime[1] = False
 
@@ -9712,11 +9193,9 @@ class RealBenchmark:
         return min(score, self.baseline * 3)
 
     def test_matrix(self):
-        """Matrix multiplication - tests FPU and cache"""
         import random
 
         def matrix_mult(a, b, size):
-            """NxN matrix multiplication"""
             result = [[0] * size for _ in range(size)]
             for i in range(size):
                 for j in range(size):
@@ -9745,7 +9224,6 @@ class RealBenchmark:
         return min(score, self.baseline * 3)
 
     def test_memory_bandwidth(self):
-        """Memory bandwidth test - large array operations"""
         import array
 
         size = 10 * 1024 * 1024 // 8
@@ -9769,11 +9247,9 @@ class RealBenchmark:
         return min(score, self.baseline * 3)
 
     def test_multicore(self):
-        """Multi-threaded benchmark - tests all cores"""
         import concurrent.futures
 
         def cpu_work(n):
-            """CPU-intensive work"""
             total = 0
             for i in range(n):
                 total += i * i % 997
@@ -9798,16 +9274,13 @@ class RealBenchmark:
         return min(score, self.baseline * 5)
 
     def get_single_core_score(self):
-        """Calculate single-core score"""
         single_tests = ['compression', 'crypto', 'prime_sieve', 'matrix']
         return sum(self.results.get(t, 0) for t in single_tests) / len(single_tests)
 
     def get_multi_core_score(self):
-        """Calculate multi-core score"""
         return self.results.get('multicore', 0)
 
     def get_summary(self):
-        """Get benchmark summary"""
         return {
             'single_core': int(self.get_single_core_score()),
             'multi_core': int(self.get_multi_core_score()),
@@ -9818,22 +9291,6 @@ class RealBenchmark:
 REAL_BENCHMARK = RealBenchmark()
 
 class OptiBalance:
-    """
-    OptiBalance - Dynamic Process Priority Manager
-
-    OptiCores intelligent algorithm:
-    1. Monitor system-wide CPU usage
-    2. When CPU exceeds threshold, identify CPU-hungry background processes
-    3. Temporarily lower their priority (Normal → Below Normal)
-    4. Protect foreground process from restraint
-    5. Restore priority when CPU load decreases
-
-    This helps because:
-    - Windows scheduler gives equal time to all Normal priority processes
-    - When background process hogs CPU, foreground becomes sluggish
-    - By lowering background priority, foreground gets more CPU cycles
-    - Result: System stays responsive even under heavy load
-    """
 
     IDLE_PRIORITY = 0x40
     BELOW_NORMAL_PRIORITY = 0x4000
@@ -9881,7 +9338,6 @@ class OptiBalance:
         }
 
     def start(self):
-        """Start OptiBalance monitoring"""
         self.enabled = True
         self._stop_event.clear()
 
@@ -9900,13 +9356,11 @@ class OptiBalance:
         self._monitor_thread.start()
 
     def stop(self):
-        """Stop OptiBalance and restore all priorities"""
         self.enabled = False
         self._stop_event.set()
         self._restore_all()
 
     def _tick(self):
-        """Main OptiBalance logic - runs each interval"""
         now = time.time()
 
         try:
@@ -9945,7 +9399,6 @@ class OptiBalance:
         self._check_for_releases()
 
     def _check_for_restraints(self):
-        """Find and restrain CPU-hungry background processes"""
         now = time.time()
 
         for proc in psutil.process_iter(['pid', 'name', 'cpu_percent']):
@@ -9982,7 +9435,6 @@ class OptiBalance:
                 pass
 
     def _restrain(self, pid, name):
-        """Lower process priority temporarily"""
         try:
             handle = win32api.OpenProcess(
                 win32con.PROCESS_SET_INFORMATION | win32con.PROCESS_QUERY_INFORMATION,
@@ -10008,7 +9460,6 @@ class OptiBalance:
             pass
 
     def _check_for_releases(self):
-        """Release processes that have calmed down"""
         now = time.time()
         to_release = []
 
@@ -10029,7 +9480,6 @@ class OptiBalance:
             self._release(pid)
 
     def _release(self, pid):
-        """Restore process to original priority"""
         if pid not in self.restrained_pids:
             return
 
@@ -10049,20 +9499,16 @@ class OptiBalance:
             pass
 
     def _restore_all(self):
-        """Restore all restrained processes"""
         for pid in list(self.restrained_pids.keys()):
             self._release(pid)
 
     def add_exclusion(self, process_name):
-        """Add process to exclusion list"""
         self.exclusions.add(process_name.lower())
 
     def remove_exclusion(self, process_name):
-        """Remove process from exclusion list"""
         self.exclusions.discard(process_name.lower())
 
     def get_stats(self):
-        """Get OptiBalance statistics"""
         return {
             **self.stats,
             'currently_restrained': len(self.restrained_pids),
@@ -10075,14 +9521,6 @@ class OptiBalance:
 OPTI_BALANCE = OptiBalance()
 
 class CPULimiter:
-    """
-    CPU Limiter - Limits process CPU usage via affinity
-
-    OptiCores approach: Limit CPU usage by temporarily
-    reducing the number of cores a process can use.
-
-    Example: 4-core system, limit to 2 cores = max 50% CPU usage
-    """
     def __init__(self):
         self.enabled = False
         self.rules = {}
@@ -10090,15 +9528,12 @@ class CPULimiter:
         self.total_cores = os.cpu_count() or 4
 
     def add_rule(self, process_name, max_cpu_percent):
-        """Add CPU limit rule for a process (e.g., 'chrome.exe', 50)"""
         self.rules[process_name.lower()] = max_cpu_percent
 
     def remove_rule(self, process_name):
-        """Remove CPU limit rule"""
         self.rules.pop(process_name.lower(), None)
 
     def apply_limits(self):
-        """Apply CPU limits to matching processes"""
         for proc in psutil.process_iter(['pid', 'name', 'cpu_affinity']):
             try:
                 name = proc.info['name'].lower()
@@ -10112,7 +9547,6 @@ class CPULimiter:
                 pass
 
     def _limit_process(self, pid, name, max_percent, original_affinity):
-        """Apply CPU limit via affinity"""
         try:
             cores_to_use = max(1, int(self.total_cores * max_percent / 100))
 
@@ -10130,7 +9564,6 @@ class CPULimiter:
             pass
 
     def release_all(self):
-        """Restore all processes to original affinity"""
         for pid, info in list(self.limited_pids.items()):
             try:
                 proc = psutil.Process(pid)
@@ -10142,16 +9575,6 @@ class CPULimiter:
 CPU_LIMITER = CPULimiter()
 
 class IOPriorityManager:
-    """
-    I/O Priority - Controls disk access priority
-
-    Windows I/O priorities:
-    - Critical (highest) - Reserved for system
-    - High - Interactive apps
-    - Normal - Default
-    - Low - Background tasks
-    - Very Low - Idle background
-    """
     IO_PRIORITY_VERY_LOW = 0
     IO_PRIORITY_LOW = 1
     IO_PRIORITY_NORMAL = 2
@@ -10161,7 +9584,6 @@ class IOPriorityManager:
         self.rules = {}
 
     def set_io_priority(self, pid, priority):
-        """Set I/O priority for a process"""
         try:
             PROCESS_SET_INFORMATION = 0x0200
             ProcessIoPriority = 21
@@ -10180,25 +9602,14 @@ class IOPriorityManager:
         return False
 
     def boost_game_io(self, game_pid):
-        """Boost I/O priority for a game"""
         return self.set_io_priority(game_pid, self.IO_PRIORITY_HIGH)
 
     def reduce_background_io(self, pid):
-        """Lower I/O priority for background process"""
         return self.set_io_priority(pid, self.IO_PRIORITY_LOW)
 
 IO_PRIORITY = IOPriorityManager()
 
 class SmartTrim:
-    """
-    SmartTrim - Intelligently trim memory from idle processes
-
-    Unlike aggressive RAM cleaners, SmartTrim:
-    1. Only trims IDLE/background processes
-    2. Never trims foreground app
-    3. Respects minimum working set
-    4. Also clears standby list when RAM > threshold
-    """
     def __init__(self):
         self.enabled = False
         self.config = {
@@ -10212,7 +9623,6 @@ class SmartTrim:
         self._process_activity = {}
 
     def start(self):
-        """Start SmartTrim monitoring"""
         self.enabled = True
         self._stop_event.clear()
 
@@ -10228,12 +9638,10 @@ class SmartTrim:
         self._monitor_thread.start()
 
     def stop(self):
-        """Stop SmartTrim"""
         self.enabled = False
         self._stop_event.set()
 
     def _tick(self):
-        """Main SmartTrim logic"""
         ram_percent = psutil.virtual_memory().percent
         if ram_percent < self.config['ram_threshold']:
             return
@@ -10265,7 +9673,6 @@ class SmartTrim:
                 pass
 
     def _trim_process(self, pid):
-        """Trim working set of a process"""
         try:
             PROCESS_SET_QUOTA = 0x0100
             handle = ctypes.windll.kernel32.OpenProcess(PROCESS_SET_QUOTA, False, pid)
@@ -10278,12 +9685,6 @@ class SmartTrim:
 SMART_TRIM = SmartTrim()
 
 class IdleSaver:
-    """
-    IdleSaver - Auto-switch power plans on idle
-
-    When system is idle: Switch to power saver
-    When user active: Switch to high performance
-    """
 
     POWER_SAVER = "a1841308-3541-4fab-bc81-f71556f20b4a"
     BALANCED = "381b4222-f694-41f0-9685-ff5bb260df2e"
@@ -10302,7 +9703,6 @@ class IdleSaver:
         self._is_idle = False
 
     def start(self):
-        """Start IdleSaver"""
         self.enabled = True
         self._stop_event.clear()
 
@@ -10318,12 +9718,10 @@ class IdleSaver:
         self._monitor_thread.start()
 
     def stop(self):
-        """Stop IdleSaver"""
         self.enabled = False
         self._stop_event.set()
 
     def _tick(self):
-        """Check idle status and switch power plan"""
         try:
             class LASTINPUTINFO(ctypes.Structure):
                 _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
@@ -10348,7 +9746,6 @@ class IdleSaver:
             pass
 
     def _switch_plan(self, plan_guid):
-        """Switch to specified power plan"""
         try:
             subprocess.run(
                 ['powercfg', '/setactive', plan_guid],
@@ -10380,7 +9777,6 @@ MODERN_COLORS = {
 }
 
 class GlassCard(ctk.CTkFrame):
-    """Modern frosted glass card with subtle border glow"""
     def __init__(self, parent, glow_color=None, **kwargs):
         glow = glow_color or MODERN_COLORS['border_glow']
         super().__init__(
@@ -10396,7 +9792,6 @@ class GlassCard(ctk.CTkFrame):
         self.bind('<Leave>', lambda e: self.configure(border_color=MODERN_COLORS['border']))
 
 class AnimatedProgress(ctk.CTkFrame):
-    """Modern progress bar with smooth animation"""
     def __init__(self, parent, width=200, height=8, color=None, **kwargs):
         super().__init__(parent, width=width, height=height,
                         fg_color=MODERN_COLORS['bg_dark'], corner_radius=4, **kwargs)
@@ -10412,7 +9807,6 @@ class AnimatedProgress(ctk.CTkFrame):
         self.max_width = width
 
     def set_progress(self, value, animate=True):
-        """Set progress value (0-100)"""
         self.target = max(0, min(100, value))
         if animate:
             self._animate()
@@ -10421,7 +9815,6 @@ class AnimatedProgress(ctk.CTkFrame):
             self._update_bar()
 
     def _animate(self):
-        """Smooth animation"""
         if abs(self.progress - self.target) < 1:
             self.progress = self.target
             self._update_bar()
@@ -10432,12 +9825,10 @@ class AnimatedProgress(ctk.CTkFrame):
         self.after(16, self._animate)
 
     def _update_bar(self):
-        """Update bar width"""
         width = int(self.max_width * self.progress / 100)
         self.bar.configure(width=max(1, width))
 
 class PulseButton(ctk.CTkButton):
-    """Modern button with pulse effect on hover"""
     def __init__(self, parent, text="", icon="", color=None, **kwargs):
         btn_color = color or MODERN_COLORS['accent_purple']
         hover_color = self._lighten_color(btn_color)
@@ -10456,7 +9847,6 @@ class PulseButton(ctk.CTkButton):
         )
 
     def _lighten_color(self, hex_color):
-        """Lighten a hex color"""
         hex_color = hex_color.lstrip('#')
         r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
         r = min(255, int(r * 1.2))
@@ -10465,7 +9855,6 @@ class PulseButton(ctk.CTkButton):
         return f"#{r:02x}{g:02x}{b:02x}"
 
 class GradientLabel(ctk.CTkFrame):
-    """Label with gradient-colored text effect"""
     def __init__(self, parent, text="", size=24, **kwargs):
         super().__init__(parent, fg_color="transparent", **kwargs)
 
@@ -10481,7 +9870,6 @@ class GradientLabel(ctk.CTkFrame):
         self.label.configure(text=text)
 
 class StatCard(GlassCard):
-    """Modern stat display card for dashboard"""
     def __init__(self, parent, title="", value="0", icon="📊",
                  color=None, **kwargs):
         super().__init__(parent, glow_color=color, **kwargs)
@@ -10506,7 +9894,6 @@ class StatCard(GlassCard):
         self.value_label.configure(text=str(value))
 
 class ToggleCard(GlassCard):
-    """Modern toggle card for enabling features"""
     def __init__(self, parent, title="", description="",
                  icon="⚡", command=None, **kwargs):
         super().__init__(parent, **kwargs)
@@ -10549,7 +9936,6 @@ class ToggleCard(GlassCard):
             self.switch.deselect()
 
 class MiniChart(ctk.CTkFrame):
-    """Simple line chart widget for performance graphs"""
     def __init__(self, parent, width=200, height=80, line_color="#8B5CF6",
                  bg_color="#0D1117", grid_color="#1F2937", max_points=60, **kwargs):
         super().__init__(parent, width=width, height=height, fg_color=bg_color, **kwargs)
@@ -10566,19 +9952,16 @@ class MiniChart(ctk.CTkFrame):
         self.canvas.pack(fill="both", expand=True)
 
     def add_point(self, value):
-        """Add a data point (0-100)"""
         self.data.append(max(0, min(100, value)))
         if len(self.data) > self.max_points:
             self.data = self.data[-self.max_points:]
         self.redraw()
 
     def set_data(self, data):
-        """Set all data points"""
         self.data = [max(0, min(100, v)) for v in data[-self.max_points:]]
         self.redraw()
 
     def redraw(self):
-        """Redraw the chart"""
         self.canvas.delete("all")
 
         if len(self.data) < 2:
@@ -10610,7 +9993,6 @@ class MiniChart(ctk.CTkFrame):
                                        stipple="gray25", outline="")
 
 class StatusBadge(ctk.CTkFrame):
-    """Small status badge showing active/inactive state"""
     def __init__(self, parent, text="OFF", active=False, **kwargs):
         super().__init__(parent, height=24, corner_radius=12, **kwargs)
 
@@ -10625,7 +10007,6 @@ class StatusBadge(ctk.CTkFrame):
         self._update_style()
 
     def set_active(self, active, text=None):
-        """Update badge state"""
         self.active = active
         if text:
             self.text = text
@@ -10672,11 +10053,9 @@ def set_power_throttle(handle, eco_on=True):
         pass
 
 def get_cpu_temp():
-    """Get CPU temperature - DISABLED for performance (WMI is too slow)"""
     return None
 
 def get_gpu_temp():
-    """Get GPU temperature via GPUtil"""
     try:
         if GPUtil:
             gpus = GPUtil.getGPUs()
@@ -10691,7 +10070,6 @@ class DiskIOTracker:
         self.last_time = time.time()
 
     def get_rates(self):
-        """Returns (read_bytes_per_sec, write_bytes_per_sec)"""
         try:
             curr = psutil.disk_io_counters()
             now = time.time()
@@ -10708,7 +10086,6 @@ class DiskIOTracker:
 DISK_IO = DiskIOTracker()
 
 class AIQuestionManager:
-    """Manages predefined questions with smart prediction based on system state"""
 
     CATEGORIES = {
         "performance": "🚀 Performance",
@@ -10753,7 +10130,6 @@ class AIQuestionManager:
         self.history = []
 
     def get_predicted_questions(self, limit=6):
-        """Predict relevant questions based on current system state"""
         scores = {}
 
         try:
@@ -10797,13 +10173,11 @@ class AIQuestionManager:
         return [self.QUESTIONS[i] for i in sorted_indices[:limit]]
 
     def get_all_questions(self, category=None):
-        """Get all questions, optionally filtered by category"""
         if category and category != "all":
             return [q for q in self.QUESTIONS if q["cat"] == category]
         return self.QUESTIONS
 
     def record_selection(self, question):
-        """Record question selection for future prediction enhancement"""
         self.history.append(question)
         if len(self.history) > 20:
             self.history = self.history[-20:]
@@ -10900,7 +10274,6 @@ class EffectsTracker:
 EFFECTS = EffectsTracker()
 
 class BackgroundGovernor:
-    """Enhanced governor with Job Object CPU/memory limits"""
     def __init__(self):
         self.enabled = False
         self.job = None
@@ -10916,7 +10289,6 @@ class BackgroundGovernor:
                 self.job = None
 
     def _configure_job_limits(self):
-        """Configure Job Object with CPU rate limit"""
         if not self.job or not win32job:
             return
         try:
@@ -10931,16 +10303,13 @@ class BackgroundGovernor:
             pass
 
     def set_cpu_limit(self, percent):
-        """Set CPU rate limit for governed processes (0-100%)"""
         self.cpu_limit = max(5, min(100, percent))
         self._configure_job_limits()
 
     def set_mem_priority_level(self, level):
-        """Set memory priority level for governed processes (1-5)"""
         self.mem_priority = max(1, min(5, level))
 
     def govern(self, pid, mem_priority_override=None):
-        """Apply governance to a background process"""
         if pid in self.governed_pids:
             return
 
@@ -10976,15 +10345,12 @@ class BackgroundGovernor:
                 pass
 
     def release(self, pid):
-        """Release a process from governance"""
         self.governed_pids.discard(pid)
 
     def get_governed_count(self):
-        """Get count of currently governed processes"""
         return len(self.governed_pids)
 
     def suspend_heavy_process(self, pid):
-        """Suspend a heavy background process (for Quiet mode)"""
         try:
             p = psutil.Process(pid)
             p.suspend()
@@ -10994,7 +10360,6 @@ class BackgroundGovernor:
             return False
 
 class LatencyMonitor:
-    """Track context switches and system latency metrics per process"""
     def __init__(self):
         self.ctx_switches = defaultdict(lambda: deque(maxlen=60))
         self.system_dpc = deque(maxlen=60)
@@ -11002,7 +10367,6 @@ class LatencyMonitor:
         self._last_ctx = {}
 
     def sample_process(self, pid):
-        """Get context switch delta for a process"""
         try:
             p = psutil.Process(pid)
             ctx = p.num_ctx_switches()
@@ -11016,14 +10380,12 @@ class LatencyMonitor:
             return 0
 
     def get_ctx_trend(self, pid):
-        """Get context switch trend (avg of recent samples)"""
         hist = self.ctx_switches.get(pid, [])
         if len(hist) < 3:
             return 0.0
         return sum(hist) / len(hist)
 
     def sample_system_dpc(self):
-        """Sample system-wide DPC/ISR latency using psutil (lightweight)"""
         try:
             cpu_times = psutil.cpu_times_percent(interval=None)
             dpc = getattr(cpu_times, 'interrupt', 0) + getattr(cpu_times, 'dpc', 0)
@@ -11037,20 +10399,17 @@ class LatencyMonitor:
             return {"dpc": 0, "isr": 0}
 
     def get_dpc_trend(self):
-        """Get DPC time trend"""
         if len(self.system_dpc) < 3:
             return 0.0
         return sum(self.system_dpc) / len(self.system_dpc)
 
     def is_high_latency(self, pid):
-        """Check if process has unusually high context switching"""
         trend = self.get_ctx_trend(pid)
         return trend > 1000
 
 LATENCY = LatencyMonitor()
 
 class HealthWatcher:
-    """Track memory/CPU/handle/thread anomalies per process"""
     def __init__(self):
         self.hist_mem = defaultdict(lambda: deque(maxlen=12))
         self.hist_cpu = defaultdict(lambda: deque(maxlen=12))
@@ -11059,7 +10418,6 @@ class HealthWatcher:
         self.flags = {}
 
     def ingest(self, pid, rss_mb, cpu_pct):
-        """Ingest basic metrics"""
         self.hist_mem[pid].append(rss_mb)
         self.hist_cpu[pid].append(cpu_pct)
 
@@ -11084,13 +10442,11 @@ class HealthWatcher:
 
     @staticmethod
     def _is_growing(dq):
-        """Detect if a metric is consistently growing (leak pattern)"""
         if len(dq) < 6: return False
         up = sum(1 for i in range(1, len(dq)) if dq[i] >= dq[i-1]*1.03)
         return up >= 4
 
     def _detect_thread_explosion(self, pid):
-        """Detect rapid thread count increase"""
         hist = self.hist_threads.get(pid, [])
         if len(hist) < 4:
             return False
@@ -11107,7 +10463,6 @@ class HealthWatcher:
         })
 
     def get_anomaly_score(self, pid):
-        """Calculate overall anomaly score (0-1)"""
         flags = self.get_flags(pid)
         score = 0.0
         if flags["leak"]: score += 0.3
@@ -11117,18 +10472,15 @@ class HealthWatcher:
         return min(1.0, score)
 
     def get_anomaly_list(self):
-        """Get list of PIDs with anomalies"""
         return [pid for pid, flags in self.flags.items()
                 if any(flags.values())]
 
 class NetworkMonitor:
-    """Track per-process network usage"""
     def __init__(self):
         self.last_io = {}
         self.rates = {}
 
     def sample(self):
-        """Sample network usage for all processes"""
         now = time.time()
         for p in psutil.process_iter(["pid"]):
             try:
@@ -11147,11 +10499,9 @@ class NetworkMonitor:
                 continue
 
     def get_rate(self, pid):
-        """Get (send_rate, recv_rate) in KB/s"""
         return self.rates.get(pid, (0, 0))
 
     def get_top_network(self, n=5):
-        """Get top N processes by total network I/O"""
         items = [(pid, sum(rates)) for pid, rates in self.rates.items()]
         items.sort(key=lambda x: x[1], reverse=True)
         return items[:n]
@@ -11159,7 +10509,6 @@ class NetworkMonitor:
 NETWORK = NetworkMonitor()
 
 class ProcessWatchdog:
-    """Monitor specific processes and take automated action"""
     def __init__(self):
         self.watches = {}
         self.alerts = deque(maxlen=50)
@@ -11175,7 +10524,6 @@ class ProcessWatchdog:
         self.watches.pop(pattern.lower(), None)
 
     def check_all(self):
-        """Check all watched processes and return actions to take"""
         actions = []
         for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info"]):
             try:
@@ -11220,7 +10568,6 @@ class ProcessWatchdog:
 WATCHDOG = ProcessWatchdog()
 
 class AutoOptimizer:
-    """Automatic optimization based on system state"""
     def __init__(self):
         self.enabled = False
         self.last_run = 0
@@ -11233,7 +10580,6 @@ class AutoOptimizer:
         return self.enabled and (time.time() - self.last_run) > self.interval
 
     def run(self, fg_pid=None):
-        """Run auto-optimization and return list of actions taken"""
         if not self.should_run():
             return []
 
@@ -11328,7 +10674,6 @@ PROFILES = {
     }
 }
 def switch_power_plan(tag):
-    """Switch Windows power plan based on profile"""
     try:
         if tag == "HIGH":
             subprocess.run(["powercfg", "/setactive", "SCHEME_MIN"], check=False)
@@ -11350,7 +10695,6 @@ class StartupEntry:
         self.hive    = hive
 
 class StartupManager:
-    """Enhanced Startup Manager with Smart Delay support"""
     DISABLED_KEY = r"Software\OptiCores\StartupBackup"
     DELAY_CONFIG_PATH = os.path.join(APP_DIR, "startup_delays.json")
 
@@ -11362,7 +10706,6 @@ class StartupManager:
         self._load_delay_config()
 
     def _load_delay_config(self):
-        """Load delay configuration from disk"""
         try:
             if os.path.exists(self.DELAY_CONFIG_PATH):
                 self.delay_config = json.load(open(self.DELAY_CONFIG_PATH, "r", encoding="utf-8"))
@@ -11370,36 +10713,29 @@ class StartupManager:
             self.delay_config = {}
 
     def _save_delay_config(self):
-        """Save delay configuration to disk"""
         try:
             json.dump(self.delay_config, open(self.DELAY_CONFIG_PATH, "w", encoding="utf-8"), indent=2)
         except Exception:
             pass
 
     def set_delay(self, app_name, seconds):
-        """Set startup delay for an app (0-60 seconds)"""
         self.delay_config[app_name] = max(0, min(60, seconds))
         self._save_delay_config()
 
     def get_delay(self, app_name):
-        """Get startup delay for an app"""
         return self.delay_config.get(app_name, 0)
 
     def get_delayed_order(self):
-        """Get list of startup apps ordered by delay"""
         entries = self.list()
         return sorted(entries, key=lambda e: self.get_delay(e.name))
 
     def set_impact_score(self, app_name, cpu_impact, mem_impact):
-        """Record CPU/memory impact of a startup app"""
         self.impact_scores[app_name] = {"cpu": cpu_impact, "mem": mem_impact}
 
     def get_impact_score(self, app_name):
-        """Get recorded impact score for an app"""
         return self.impact_scores.get(app_name, {"cpu": 0, "mem": 0})
 
     def auto_suggest_delays(self):
-        """Suggest delays based on impact scores (higher impact = later start)"""
         suggestions = {}
         for name, impact in self.impact_scores.items():
             total_impact = impact["cpu"] + (impact["mem"] / 100)
@@ -11525,7 +10861,6 @@ def parse_condition(cond, cpu, role):
     return False
 
 class SystemInfoCollector:
-    """Collect comprehensive system information"""
     def __init__(self):
         self.cache = {}
         self.cache_time = 0
@@ -11664,7 +10999,6 @@ class SystemInfoCollector:
 SYSINFO = SystemInfoCollector()
 
 class SecurityScanner:
-    """Detect suspicious processes and resource abuse"""
     def __init__(self):
         self.suspicious_patterns = [
             'miner', 'crypto', 'xmr', 'cgminer', 'bitminer', 'nicehash',
@@ -11758,7 +11092,6 @@ class SecurityScanner:
 SECURITY = SecurityScanner()
 
 class PowerManager:
-    """Advanced power management and battery optimization"""
     POWER_PLANS = {
         'balanced': '381b4222-f694-41f0-9685-ff5bb260df2e',
         'high_performance': '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c',
@@ -11824,7 +11157,6 @@ class PowerManager:
 POWER_MGR = PowerManager()
 
 class TaskScheduler:
-    """Schedule optimization tasks"""
     def __init__(self):
         self.tasks = []
         self.running = False
@@ -11991,7 +11323,6 @@ class App(ctk.CTk):
         self._init_tray()
 
     def _build_styles(self):
-        """Configure ttk widget styles using design tokens"""
         style = ttk.Style(self)
         style.theme_use("clam")
 
@@ -12056,7 +11387,6 @@ class App(ctk.CTk):
         self.bind("<Control-B>", lambda e: self._one_click_boost())
 
     def _refresh_current_view(self):
-        """Refresh the current view based on which tab is active (F5 handler)"""
         view = getattr(self, 'current_view', None)
         if view == "Dashboard":
             self._refresh_dashboard_stats()
@@ -12075,7 +11405,6 @@ class App(ctk.CTk):
         self._toast("Refreshed", "ok")
 
     def _optibalance_monitor(self):
-        """OptiBalance: Monitor and adjust process priorities automatically"""
         if not self.optibalance_enabled:
             self.after(5000, self._optibalance_monitor)
             return
@@ -12240,7 +11569,6 @@ class App(ctk.CTk):
         return frame
 
     def _modern_card(self, parent, title, val, icon=None, color=None, on_click=None):
-        """Minimalist metric card with optional click handler - uses design tokens"""
         f = ctk.CTkFrame(parent, fg_color=TOKENS.CARD_BG, corner_radius=TOKENS.RADIUS_MD,
                         border_width=1, border_color=TOKENS.CARD_BORDER)
 
@@ -12309,7 +11637,6 @@ class App(ctk.CTk):
         return f, lbl
 
     def _modern_action_tile(self, parent, title, icon, color, cmd):
-        """Simple fully-clickable button tile - uses design tokens"""
         btn = ctk.CTkButton(
             parent,
             text=f"{icon}  {title}",
@@ -12551,7 +11878,6 @@ class App(ctk.CTk):
         self.tree_dash.bind("<Double-1>", lambda e: self._switch_nav("Processes"))
 
     def _stat_item(self, parent, label, value, icon):
-        """Small stat summary item - returns (frame, value_label)"""
         f = ctk.CTkFrame(parent, fg_color="transparent")
         ctk.CTkLabel(f, text=f"{icon} {label}", font=ctk.CTkFont(size=11), text_color="#6B7280").pack(anchor="w")
         val_lbl = ctk.CTkLabel(f, text=value, font=ctk.CTkFont(size=14, weight="bold"), text_color="#E5E7EB")
@@ -12559,7 +11885,6 @@ class App(ctk.CTk):
         return f, val_lbl
 
     def _update_recent_actions(self):
-        """Update the recent actions widget on dashboard with last 5 optimization actions"""
         if not hasattr(self, 'recent_actions_container'):
             return
 
@@ -12606,7 +11931,6 @@ class App(ctk.CTk):
         self.after(10000, self._update_recent_actions)
 
     def _update_latency_metrics(self):
-        """Update the latency metrics widget on dashboard"""
         try:
             stats = LATENCY_MONITOR.get_stats()
 
@@ -12976,7 +12300,6 @@ class App(ctk.CTk):
         lat_card(1, "🔄 CONTEXT SWITCHES", "lbl_ctx", "#EC4899")
 
     def _fill_storage(self, parent):
-        """Storage tab - disk usage, analysis, tools"""
         top = self._modern_header(parent, "Storage Manager", "Analyze usage, clean junk, and optimize drives")
 
         content = ctk.CTkFrame(parent, fg_color="transparent")
@@ -13092,7 +12415,6 @@ class App(ctk.CTk):
         ctk.CTkLabel(right_panel, text=f"Total Free Space: {total_free:.0f} GB", font=ctk.CTkFont(size=11, weight="bold"), text_color="#6B7280").pack(side="bottom", pady=20)
 
     def _fill_cleaner(self, parent):
-        """Cleaner tab - junk files, system cleanup, privacy"""
         top = self._modern_header(parent, "Junk Cleaner", "Remove unnecessary files to recover space")
 
         btn_frame = ctk.CTkFrame(top, fg_color="transparent")
@@ -13166,16 +12488,13 @@ class App(ctk.CTk):
                     font=ctk.CTkFont(size=11), text_color="#6B7280").pack(pady=10)
 
     def _scan_junk(self):
-        """Scan for junk files"""
         self._toast("Scanning for junk files...", "ok")
         self._log_activity("OptiClean: Scanning for junk files", "info")
 
     def _clean_all_junk(self):
-        """Clean all selected junk"""
         self._clean_temp_files()
 
     def _scan_large_files(self):
-        """Scan for large files - show in popup"""
         popup = ctk.CTkToplevel(self)
         popup.title("Large Files Finder")
         popup.geometry("500x450")
@@ -13240,7 +12559,6 @@ class App(ctk.CTk):
         threading.Thread(target=do_scan, daemon=True).start()
 
     def _clean_temp_files(self):
-        """Clean temp files - show popup"""
         popup = ctk.CTkToplevel(self)
         popup.title("Clean Temp Files")
         popup.geometry("380x280")
@@ -13292,7 +12610,6 @@ class App(ctk.CTk):
         threading.Thread(target=do_clean, daemon=True).start()
 
     def _empty_recycle_bin(self):
-        """Empty the Windows Recycle Bin"""
         try:
             from ctypes import windll
             result = windll.shell32.SHEmptyRecycleBinW(None, None, 0x00000007)
@@ -13305,7 +12622,6 @@ class App(ctk.CTk):
             self._toast(f"Error: {e}", "err")
 
     def _open_disk_cleanup(self):
-        """Open Windows Disk Cleanup utility"""
         try:
             subprocess.Popen("cleanmgr.exe", shell=True)
             self._toast("Disk Cleanup opened!", "ok")
@@ -13314,7 +12630,6 @@ class App(ctk.CTk):
             self._toast("Could not open Disk Cleanup", "err")
 
     def _analyze_folders(self):
-        """Analyze folder sizes - show popup"""
         popup = ctk.CTkToplevel(self)
         popup.title("Folder Analysis")
         popup.geometry("450x400")
@@ -13371,7 +12686,6 @@ class App(ctk.CTk):
                      fg_color="#374151", hover_color="#4B5563", width=100).pack(pady=15)
 
     def _trim_ssd(self):
-        """Run TRIM on SSD"""
         try:
             subprocess.run(['defrag', 'C:', '/O'], capture_output=True, timeout=5)
             self._toast("TRIM optimization started!", "ok")
@@ -13380,11 +12694,9 @@ class App(ctk.CTk):
             self._toast("Could not start TRIM", "error")
 
     def _check_disk(self):
-        """Schedule disk check"""
         self._toast("Run 'chkdsk' from admin CMD", "ok")
 
     def _defrag_disk(self):
-        """Start defragmentation"""
         try:
             subprocess.Popen(['dfrgui'], shell=True)
             self._log_activity("OptiStorage: Opened Disk Defragmenter", "info")
@@ -13392,11 +12704,9 @@ class App(ctk.CTk):
             self._toast("Could not open defrag tool", "error")
 
     def _clean_windows_temp(self):
-        """Clean Windows temp folder"""
         self._clean_temp_files()
 
     def _clean_browser_cache(self):
-        """Clean browser cache files"""
         popup = ctk.CTkToplevel(self)
         popup.title("Browser Cache")
         popup.geometry("350x200")
@@ -13412,7 +12722,6 @@ class App(ctk.CTk):
                      fg_color="#374151", hover_color="#4B5563", width=80).pack(pady=15)
 
     def _clean_system_logs(self):
-        """Clean old log files"""
         try:
             cleaned = 0
             log_path = "C:\\Windows\\Logs"
@@ -13431,7 +12740,6 @@ class App(ctk.CTk):
             self._toast("Could not clean logs (need admin)", "error")
 
     def _empty_recycle_bin(self):
-        """Empty the recycle bin"""
         try:
             from ctypes import windll
             windll.shell32.SHEmptyRecycleBinW(None, None, 0x07)
@@ -13596,7 +12904,6 @@ class App(ctk.CTk):
                      command=self._kill_app_connections).pack(side="left")
 
     def _refresh_connections(self):
-        """Refresh active connections list"""
         for w in self.conn_list_frame.winfo_children():
             w.destroy()
 
@@ -13628,7 +12935,6 @@ class App(ctk.CTk):
             ctk.CTkLabel(self.conn_list_frame, text=f"Error: {e}", text_color="#EF4444").pack(pady=20)
 
     def _ping_test(self):
-        """Quick ping test to common servers - show popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("Ping Test")
         popup.geometry("380x320")
@@ -13697,7 +13003,6 @@ class App(ctk.CTk):
         threading.Thread(target=do_ping, daemon=True).start()
 
     def _optimize_tcp(self):
-        """Optimize TCP settings - show popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("TCP Optimization")
         popup.geometry("380x300")
@@ -13743,7 +13048,6 @@ class App(ctk.CTk):
         self._log_activity("OptiNet: TCP settings optimized", "success")
 
     def _release_renew_ip(self):
-        """Release and renew IP address - show popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("IP Renew")
         popup.geometry("350x250")
@@ -13787,7 +13091,6 @@ class App(ctk.CTk):
         threading.Thread(target=do_release, daemon=True).start()
 
     def _show_net_stats(self):
-        """Show network statistics - popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("Network Statistics")
         popup.geometry("400x350")
@@ -13828,7 +13131,6 @@ class App(ctk.CTk):
                      fg_color="#374151", hover_color="#4B5563", width=100).pack(pady=15)
 
     def _change_dns(self, provider):
-        """Change DNS server - show popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("Change DNS")
         popup.geometry("380x280")
@@ -13913,7 +13215,6 @@ class App(ctk.CTk):
         threading.Thread(target=do_change, daemon=True).start()
 
     def _network_troubleshoot(self):
-        """Run network troubleshooting checks - show popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("Network Troubleshoot")
         popup.geometry("400x350")
@@ -13990,7 +13291,6 @@ class App(ctk.CTk):
         threading.Thread(target=do_troubleshoot, daemon=True).start()
 
     def _low_latency_mode(self):
-        """Enable low latency network settings - show popup window with Enable/Revert"""
         popup = ctk.CTkToplevel(self)
         popup.title("Low Latency Mode")
         popup.geometry("420x400")
@@ -14073,7 +13373,6 @@ class App(ctk.CTk):
                      fg_color="#1D232C", hover_color="#374151", width=100).pack(pady=10)
 
     def _show_bandwidth_by_app(self):
-        """Show bandwidth usage by application - popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("Network Usage by App")
         popup.geometry("420x400")
@@ -14135,7 +13434,6 @@ class App(ctk.CTk):
                      fg_color="#374151", hover_color="#4B5563", width=80).pack(side="right")
 
     def _kill_app_connections(self):
-        """Kill network connections for a specific app"""
         app_name = self.kill_app_entry.get().strip().lower()
         if not app_name:
             self._toast("Enter an app name", "error")
@@ -14170,7 +13468,6 @@ class App(ctk.CTk):
             self._toast(f"Error: {e}", "error")
 
     def _flush_dns(self):
-        """Flush DNS cache"""
         try:
             subprocess.run(['ipconfig', '/flushdns'], capture_output=True, timeout=10)
             self._toast("DNS cache flushed!", "ok")
@@ -14180,7 +13477,6 @@ class App(ctk.CTk):
             self._log_activity(f"OptiNet: DNS flush failed - {e}", "error")
 
     def _reset_network(self):
-        """Reset network stack"""
         try:
             subprocess.run(['netsh', 'winsock', 'reset'], capture_output=True, timeout=10)
             subprocess.run(['netsh', 'int', 'ip', 'reset'], capture_output=True, timeout=10)
@@ -14201,7 +13497,6 @@ class App(ctk.CTk):
             show_timer = None
 
             def destroy_all_tips():
-                """Destroy all active tooltips"""
                 for t in active_tooltips[:]:
                     try:
                         t.destroy()
@@ -14376,7 +13671,6 @@ class App(ctk.CTk):
         ctk.CTkFrame(tweak_card, height=10, fg_color="transparent").pack()
 
     def _booster_toggle(self, feature):
-        """Handle booster panel toggle switches"""
         if feature == 'game':
             if self.booster_chk_game.get():
                 switch_power_plan("HIGH")
@@ -14404,7 +13698,6 @@ class App(ctk.CTk):
             self._toast(f"Memory Optimizer: {'ON' if MEM_OPTIMIZER.enabled else 'OFF'}", "ok")
 
     def _junk_scan(self):
-        """Scan for junk files - show results in popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("🗑️ Junk File Scanner")
         popup.geometry("600x500")
@@ -14509,7 +13802,6 @@ class App(ctk.CTk):
                      fg_color="#EF4444", hover_color="#DC2626", width=120).pack(side="right", padx=10)
 
     def _junk_clean(self):
-        """Clean junk files"""
         try:
             bytes_freed, files_cleaned = JUNK_CLEANER.clean()
             mb = bytes_freed / (1024 * 1024)
@@ -14611,7 +13903,6 @@ class App(ctk.CTk):
         self.lbl_net_status.pack(side="left", padx=20)
 
     def _scan_games(self):
-        """Scan for installed games"""
         games = GAME_LIBRARY.scan_all()
         self.lbl_game_count.configure(text=f"Games found: {len(games)}")
 
@@ -14632,7 +13923,6 @@ class App(ctk.CTk):
         self._toast(f"Found {len(games)} games", "ok")
 
     def _scan_drivers(self):
-        """Scan installed drivers - show detailed popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("🔧 Driver Scanner")
         popup.geometry("750x550")
@@ -14786,7 +14076,6 @@ class App(ctk.CTk):
                      fg_color="#374151", hover_color="#4B5563", width=100).pack(side="right")
 
     def _stop_gaming_services(self):
-        """Stop services safe for gaming"""
         if self.settings.get("confirm_dialogs", True):
             if not confirm_action(self, "Stop Services", "Stop non-essential services for gaming?"):
                 return
@@ -14798,13 +14087,11 @@ class App(ctk.CTk):
         self._toast(f"Stopped {count} services", "ok")
 
     def _start_all_services(self):
-        """Restart stopped services"""
         count = CHANGE_TRACKER.undo_all()
         self.lbl_service_status.configure(text=f"Restored: {count} changes")
         self._toast(f"Restored {count} changes", "ok")
 
     def _scan_context_menu(self):
-        """Scan context menu entries - show detailed popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("📋 Context Menu Scanner")
         popup.geometry("700x500")
@@ -14896,7 +14183,6 @@ class App(ctk.CTk):
                      fg_color="#374151", hover_color="#4B5563", width=100).pack(side="right")
 
     def _scan_tasks(self):
-        """Scan scheduled tasks - show detailed popup window"""
         popup = ctk.CTkToplevel(self)
         popup.title("📅 Scheduled Task Scanner")
         popup.geometry("800x550")
@@ -15035,7 +14321,6 @@ class App(ctk.CTk):
                      fg_color="#EF4444", hover_color="#DC2626", width=140).pack(side="right", padx=10)
 
     def _run_speed_test(self):
-        """Run network speed test - show results in popup window"""
         import tkinter as tk
 
         popup = tk.Toplevel(self)
@@ -15195,7 +14480,6 @@ class App(ctk.CTk):
                      fg_color="#3B82F6", hover_color="#2563EB", width=120).pack(side="right", padx=10)
 
     def _disable_bloat_tasks(self):
-        """Disable bloatware scheduled tasks"""
         if self.settings.get("confirm_dialogs", True):
             if not confirm_action(self, "Disable Tasks", "Disable telemetry and bloatware tasks?"):
                 return
@@ -15675,7 +14959,6 @@ class App(ctk.CTk):
         self.btn_run_bench.configure(state="normal")
 
     def _test_file_compression(self):
-        """Real compression benchmark - compress/decompress cycle"""
         import time as t
         import zlib
         import lzma
@@ -15699,7 +14982,6 @@ class App(ctk.CTk):
         return score, f"{mb_per_sec:.1f} MB/s"
 
     def _test_navigation(self):
-        """Dijkstra's shortest path algorithm - real pathfinding"""
         import time as t
         import heapq
 
@@ -15745,7 +15027,6 @@ class App(ctk.CTk):
         return score, f"{routes_per_sec:.0f} routes/sec"
 
     def _test_html5(self):
-        """Browser workload - JSON parsing + DOM manipulation simulation"""
         import time as t
         import json
         import re
@@ -15775,7 +15056,6 @@ class App(ctk.CTk):
         return score, f"{ops_per_sec:.0f} pages/sec"
 
     def _test_pdf(self):
-        """PDF rendering - matrix transformations + text layout"""
         import time as t
         import math
 
@@ -15816,7 +15096,6 @@ class App(ctk.CTk):
         return score, f"{docs_per_sec:.0f} pages/sec"
 
     def _test_photo(self):
-        """Photo processing - Gaussian blur convolution"""
         import time as t
 
         width, height = 1000, 1000
@@ -15854,7 +15133,6 @@ class App(ctk.CTk):
         return score, f"{images_per_sec:.1f} MP/sec"
 
     def _test_clang(self):
-        """Code compilation - lexer + parser simulation"""
         import time as t
         import re
 
@@ -15899,7 +15177,6 @@ class App(ctk.CTk):
         return score, f"{kloc_per_sec:.1f} KLoC/sec"
 
     def _test_text(self):
-        """Text processing - regex + database operations"""
         import time as t
         import re
         import sqlite3
@@ -15931,7 +15208,6 @@ class App(ctk.CTk):
         return score, f"{ops_per_sec:.0f} docs/sec"
 
     def _test_asset(self):
-        """Asset compression - texture/geometry encoding"""
         import time as t
         import zlib
         import struct
@@ -15965,7 +15241,6 @@ class App(ctk.CTk):
         return score, f"{mb_per_sec:.1f} MB/s"
 
     def _test_encryption(self):
-        """AES-256 encryption/decryption benchmark"""
         import time as t
         import hashlib
 
@@ -15994,7 +15269,6 @@ class App(ctk.CTk):
         return score, f"{mb_per_sec:.1f} MB/s"
 
     def _test_physics(self):
-        """N-Body gravity simulation (physics engine workload)"""
         import time as t
         import math
         import random
@@ -16051,7 +15325,6 @@ class App(ctk.CTk):
         return score, f"{pairs_per_sec/1000:.0f}K pairs/sec"
 
     def _test_ml_inference(self):
-        """Matrix multiply benchmark (neural network inference simulation)"""
         import time as t
         import random
 
@@ -16091,13 +15364,11 @@ class App(ctk.CTk):
         return score, f"{gflops:.2f} GFLOPS"
 
     def _test_fft(self):
-        """Fast Fourier Transform (signal processing workload)"""
         import time as t
         import math
         import cmath
 
         def fft(x):
-            """Cooley-Tukey FFT algorithm"""
             n = len(x)
             if n <= 1:
                 return x
@@ -16131,7 +15402,6 @@ class App(ctk.CTk):
         return score, f"{msamples:.2f} MS/sec"
 
     def _test_memory_bandwidth(self):
-        """Memory bandwidth test - sequential read/write"""
         import time as t
 
         size = 100 * 1024 * 1024
@@ -16157,7 +15427,6 @@ class App(ctk.CTk):
         return score, f"{gb_per_sec:.1f} GB/s"
 
     def _test_memory_latency(self):
-        """Memory latency test - random access pattern"""
         import time as t
         import random
 
@@ -16183,7 +15452,6 @@ class App(ctk.CTk):
         return score, f"{ns_per_access:.1f} ns"
 
     def _test_disk_sequential(self):
-        """Disk sequential I/O test - large file operations"""
         import time as t
         import tempfile
 
@@ -16218,7 +15486,6 @@ class App(ctk.CTk):
         return score, f"{int(avg_speed)} MB/s"
 
     def _test_disk_random(self):
-        """Disk random 4K I/O test - small block operations"""
         import time as t
         import tempfile
         import random
@@ -16265,7 +15532,6 @@ class App(ctk.CTk):
         return score, f"{int(avg_iops)} IOPS"
 
     def _test_object_detection(self):
-        """Object Detection - CNN convolution simulation (MobileNet-style)"""
         import time as t
         import random
         import math
@@ -16310,7 +15576,6 @@ class App(ctk.CTk):
         return score, f"{inferences_per_sec:.1f} inf/sec"
 
     def _test_background_blur(self):
-        """Background Blur - Video conferencing workload (depth + blur)"""
         import time as t
         import math
         import random
@@ -16378,7 +15643,6 @@ class App(ctk.CTk):
         return score, f"{fps:.1f} fps"
 
     def _test_horizon_detection(self):
-        """Horizon Detection - Canny edge + Hough transform"""
         import time as t
         import math
         import random
@@ -16439,7 +15703,6 @@ class App(ctk.CTk):
         return score, f"{imgs_per_sec:.1f} img/sec"
 
     def _test_ray_tracer(self):
-        """Ray Tracer - CPU path tracing benchmark"""
         import time as t
         import math
         import random
@@ -16539,7 +15802,6 @@ class App(ctk.CTk):
         return score, f"{mrays:.2f} Mrays/sec"
 
     def _test_hdr_merge(self):
-        """HDR Merge - Exposure bracketing + tonemapping"""
         import time as t
         import math
         import random
@@ -16605,7 +15867,6 @@ class App(ctk.CTk):
         return score, f"{mpix:.1f} MP/sec"
 
     def _test_lz4_fast(self):
-        """LZ4 Fast Compression - Ultra-fast codec simulation"""
         import time as t
         import zlib
 
@@ -16634,7 +15895,6 @@ class App(ctk.CTk):
         return score, f"{mb_per_sec:.0f} MB/s ({ratio:.1f}x)"
 
     def _test_multicore_real(self):
-        """True Multi-Core Benchmark - ProcessPool parallel workload"""
         import time as t
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
@@ -16675,7 +15935,6 @@ class App(ctk.CTk):
         return score, f"{num_cores}C @ {scaling_efficiency:.0f}% eff"
 
     def _test_gpu_compute(self):
-        """GPU Compute Simulation - SIMD-style parallel operations"""
         import time as t
         import random
         import math
@@ -16971,7 +16230,6 @@ class App(ctk.CTk):
         self.txt_effects.pack(fill="both", expand=True)
 
     def _refresh_optimizer_procs(self):
-        """Refresh the process list in the Optimizer tab"""
         if not hasattr(self, 'tree_optimizer'):
             return
 
@@ -17013,7 +16271,6 @@ class App(ctk.CTk):
             ))
 
     def _on_optimizer_select(self, event=None):
-        """Handle selection in the Optimizer process list"""
         if not hasattr(self, 'tree_optimizer'):
             return
 
@@ -17082,7 +16339,6 @@ class App(ctk.CTk):
         ctk.CTkLabel(actions, text="💡 Tip: Disabling high-impact items improves boot time.", text_color="#6B7280").pack(side="left", padx=20)
 
     def _fill_cleaner(self, parent):
-        """Cleaner tab with junk files, registry, and browser cache cleaning"""
         top = self._modern_header(parent, "System Cleaner", "Remove junk files and free up disk space")
 
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
@@ -17138,7 +16394,6 @@ class App(ctk.CTk):
                      height=36, fg_color="#374151", hover_color="#4B5563").pack(fill="x", padx=20, pady=(0,20))
 
     def _fill_activity(self, parent):
-        """Activity log - shows what OptiCores is currently doing"""
         top = self._modern_header(parent, "Activity Log", "Live view of OptiCores operations and optimizations")
 
         if not hasattr(self, 'activity_log'):
@@ -17227,7 +16482,6 @@ class App(ctk.CTk):
         self._auto_refresh_activity()
 
     def _log_activity(self, message, category="info"):
-        """Add entry to activity log"""
         import datetime
         if not hasattr(self, 'activity_log'):
             self.activity_log = []
@@ -17243,7 +16497,6 @@ class App(ctk.CTk):
             self.activity_log = self.activity_log[:100]
 
     def _render_activity_log(self):
-        """Render activity log entries"""
         if not hasattr(self, 'activity_log_frame'):
             return
 
@@ -17284,7 +16537,6 @@ class App(ctk.CTk):
             self.lbl_log_count.configure(text=f"{len(self.activity_log)} entries")
 
     def _refresh_activity_log(self):
-        """Refresh the activity log display"""
         self._render_activity_log()
 
         if hasattr(self, 'lbl_overlay_status'):
@@ -17299,27 +16551,23 @@ class App(ctk.CTk):
             self.lbl_opt_count.configure(text=str(count))
 
     def _clear_activity_log(self):
-        """Clear all activity log entries"""
         self.activity_log = []
         self._log_activity("Activity log cleared", "info")
         self._render_activity_log()
 
     def _copy_activity_log(self):
-        """Copy activity log to clipboard"""
         log_text = "\n".join([f"[{e['time']}] {e['message']}" for e in self.activity_log])
         self.clipboard_clear()
         self.clipboard_append(log_text)
         self._toast("Log copied to clipboard", "ok")
 
     def _auto_refresh_activity(self):
-        """Auto refresh activity log"""
         if hasattr(self, 'activity_auto_refresh') and self.activity_auto_refresh.get():
             self._refresh_activity_log()
         self.after(2000, self._auto_refresh_activity)
 
     def _fill_active(self, parent):
 
-        """Currently running applications tab"""
         top = self._modern_header(parent, "Active Apps", "Manage and optimize running applications")
 
         controls = ctk.CTkFrame(parent, fg_color="transparent")
@@ -17416,12 +16664,10 @@ class App(ctk.CTk):
         self.after(100, self._refresh_active_apps)
 
     def _filter_active_apps(self):
-        """Filter apps based on search"""
         query = self.active_search.get().lower() if hasattr(self, 'active_search') else ""
         self._render_active_apps(query)
 
     def _refresh_active_apps(self):
-        """Refresh list of currently running applications"""
         if not hasattr(self, 'active_apps_frame'):
             return
 
@@ -17472,7 +16718,6 @@ class App(ctk.CTk):
         self._render_active_apps()
 
     def _render_active_apps(self, filter_query=""):
-        """Render app cards with optional filter and sorting"""
         if not hasattr(self, 'active_apps_frame'):
             return
 
@@ -17638,7 +16883,6 @@ class App(ctk.CTk):
         self.lbl_active_count.configure(text=f"{len(apps)} apps")
 
     def _end_app(self, pid, name):
-        """End a running application"""
         try:
             proc = psutil.Process(pid)
             proc.terminate()
@@ -17650,7 +16894,6 @@ class App(ctk.CTk):
             self._log_activity(f"Failed to end {name}: {e}", "error")
 
     def _open_app_location(self, exe_path):
-        """Open folder containing the app"""
         try:
             if exe_path and os.path.exists(exe_path):
                 folder = os.path.dirname(exe_path)
@@ -17661,7 +16904,6 @@ class App(ctk.CTk):
             self._toast("Could not open location", "error")
 
     def _set_high_priority(self, pid, name):
-        """Set process to high priority"""
         try:
             proc = psutil.Process(pid)
             proc.nice(psutil.HIGH_PRIORITY_CLASS)
@@ -17672,7 +16914,6 @@ class App(ctk.CTk):
             self._log_activity(f"Failed to boost {name} (need admin)", "error")
 
     def _suspend_app(self, pid, name):
-        """Suspend a running process"""
         try:
             proc = psutil.Process(pid)
             proc.suspend()
@@ -17684,7 +16925,6 @@ class App(ctk.CTk):
             self._log_activity(f"Failed to suspend {name}", "error")
 
     def _resume_app(self, pid, name):
-        """Resume a suspended process"""
         try:
             proc = psutil.Process(pid)
             proc.resume()
@@ -17696,7 +16936,6 @@ class App(ctk.CTk):
             self._log_activity(f"Failed to resume {name}", "error")
 
     def _restart_app(self, pid, name, exe_path):
-        """Restart an application"""
         try:
             proc = psutil.Process(pid)
             proc.terminate()
@@ -17714,7 +16953,6 @@ class App(ctk.CTk):
             self._toast("Failed to restart", "error")
 
     def _reduce_memory(self, pid, name):
-        """Try to reduce app memory usage by trimming working set"""
         try:
             import ctypes
             PROCESS_ALL_ACCESS = 0x1F0FFF
@@ -17732,7 +16970,6 @@ class App(ctk.CTk):
             self._toast("Failed to reduce memory", "error")
 
     def _show_app_details(self, pid, name, exe_path):
-        """Show detailed info popup for an app"""
         try:
             proc = psutil.Process(pid)
             info = proc.as_dict(attrs=['pid', 'name', 'exe', 'cpu_percent', 'memory_info',
@@ -17796,7 +17033,6 @@ class App(ctk.CTk):
             self._toast(f"Could not get details: {e}", "error")
 
     def _end_selected_apps(self):
-        """End all apps matching search filter"""
         query = self.active_search.get().lower() if hasattr(self, 'active_search') else ""
         if not query:
             self._toast("Type app name to filter first", "error")
@@ -17817,7 +17053,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _gaming_mode(self):
-        """Gaming Mode: Suspend non-essential apps to free resources"""
         essential = ['explorer', 'system', 'csrss', 'wininit', 'services', 'lsass', 'svchost',
                     'dwm', 'conhost', 'python', 'code', 'opticores']
         suspended = 0
@@ -17841,7 +17076,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _kill_background_apps(self):
-        """Kill apps using minimal resources (likely background)"""
         killed = 0
         essential = ['explorer', 'system', 'csrss', 'wininit', 'services', 'lsass', 'svchost',
                     'dwm', 'conhost', 'python', 'code', 'opticores']
@@ -17863,7 +17097,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _toggle_auto_refresh(self):
-        """Toggle auto-refresh every 3 seconds"""
         if self.auto_refresh_var.get():
             self._do_auto_refresh()
         else:
@@ -17872,13 +17105,11 @@ class App(ctk.CTk):
                 self.auto_refresh_job = None
 
     def _do_auto_refresh(self):
-        """Auto refresh loop"""
         if hasattr(self, 'auto_refresh_var') and self.auto_refresh_var.get():
             self._refresh_active_apps()
             self.auto_refresh_job = self.after(3000, self._do_auto_refresh)
 
     def _end_category(self, category):
-        """End apps in a category"""
         patterns = {
             "browser": ["chrome", "firefox", "edge", "opera", "brave", "safari"],
             "game": ["game", "steam", "epic", "origin", "uplay"],
@@ -17897,7 +17128,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _boost_category(self, category):
-        """Set high priority for apps in a category"""
         patterns = {
             "game": ["game", "steam", "epic", "origin", "uplay"],
         }
@@ -17915,7 +17145,6 @@ class App(ctk.CTk):
         self._log_activity(f"Boosted {boosted} {category} apps to HIGH priority", "optimize")
 
     def _trim_all_memory(self):
-        """Reduce memory for all apps"""
         import ctypes
         trimmed = 0
         for app in self.active_apps_data:
@@ -17933,7 +17162,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _end_high_cpu_apps(self):
-        """End apps using more than 20% CPU"""
         essential = ['explorer', 'system', 'csrss', 'wininit', 'services', 'lsass', 'svchost',
                     'dwm', 'python', 'opticores']
         ended = 0
@@ -17952,7 +17180,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _resume_all_apps(self):
-        """Resume all suspended apps"""
         resumed = 0
         for app in self.active_apps_data:
             if app['status'] == 'stopped':
@@ -17966,7 +17193,6 @@ class App(ctk.CTk):
         self.after(500, self._refresh_active_apps)
 
     def _kill_duplicates(self):
-        """Kill duplicate processes (keep the one using most RAM)"""
         by_name = {}
         for app in self.active_apps_data:
             name = app['name'].lower()
@@ -17991,7 +17217,6 @@ class App(ctk.CTk):
 
     def _fill_overlay(self, parent):
 
-        """FPS Counter Overlay settings tab"""
         top = self._modern_header(parent, "Game Overlay", "Real-time FPS and system stats overlay while gaming")
 
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
@@ -18176,7 +17401,6 @@ class App(ctk.CTk):
         self.chk_show_gpu.configure(command=self._update_overlay_preview)
 
     def _on_position_change(self):
-        """Move live overlay when position is changed"""
         if not hasattr(self, 'fps_overlay') or not self.fps_overlay.winfo_exists():
             return
 
@@ -18199,19 +17423,16 @@ class App(ctk.CTk):
             pass
 
     def _on_size_slider_change(self, v):
-        """Update size label and preview"""
         self.lbl_overlay_size.configure(text=f"{int(v)}")
         self._update_overlay_preview()
         self._apply_live_overlay_settings()
 
     def _on_opacity_slider_change(self, v):
-        """Update opacity label, preview, and live overlay"""
         self.lbl_overlay_opacity.configure(text=f"{int(v)}%")
         self._update_overlay_preview()
         self._apply_live_overlay_settings()
 
     def _apply_live_overlay_settings(self):
-        """Apply settings to the live overlay window in real-time"""
         if not hasattr(self, 'fps_overlay') or not self.fps_overlay.winfo_exists():
             return
 
@@ -18228,7 +17449,6 @@ class App(ctk.CTk):
             pass
 
     def _update_overlay_preview(self):
-        """Update preview based on current settings"""
         if not hasattr(self, 'preview_content'):
             return
 
@@ -18270,14 +17490,12 @@ class App(ctk.CTk):
             pass
 
     def _toggle_fps_overlay(self):
-        """Toggle FPS overlay on/off"""
         if self.overlay_enabled.get():
             self._show_fps_overlay()
         else:
             self._hide_fps_overlay()
 
     def _show_fps_overlay(self):
-        """Show the FPS overlay window"""
         if hasattr(self, 'fps_overlay') and self.fps_overlay.winfo_exists():
             self.fps_overlay.lift()
             return
@@ -18375,7 +17593,6 @@ class App(ctk.CTk):
         self._update_fps_overlay()
 
     def _apply_overlay_visibility(self):
-        """Apply checkbox visibility settings to overlay rows"""
         if not hasattr(self, 'fps_overlay') or not self.fps_overlay.winfo_exists():
             return
 
@@ -18411,12 +17628,10 @@ class App(ctk.CTk):
             pass
 
     def _hide_fps_overlay(self):
-        """Hide the FPS overlay window"""
         if hasattr(self, 'fps_overlay') and self.fps_overlay.winfo_exists():
             self.fps_overlay.destroy()
 
     def _update_fps_overlay(self):
-        """Update overlay stats"""
         if not hasattr(self, 'fps_overlay') or not self.fps_overlay.winfo_exists():
             return
 
@@ -19438,7 +18653,6 @@ class App(ctk.CTk):
         helpbox.configure(state="disabled")
 
     def _toast(self, text, kind="ok"):
-        """Show animated toast notification with slide-in effect"""
         top = ctk.CTkToplevel(self)
         top.overrideredirect(True)
         top.attributes('-topmost', True)
@@ -19641,7 +18855,6 @@ class App(ctk.CTk):
             time.sleep(15)
 
     def _loop_latency_monitor(self):
-        """Monitor context switches and DPC/ISR latency (optimized)"""
         while not self._stop:
             try:
                 dpc_stats = LATENCY.sample_system_dpc()
@@ -19672,7 +18885,6 @@ class App(ctk.CTk):
             time.sleep(5)
 
     def _quick_boost_fg(self):
-        """Boost foreground process to High priority"""
         fpid = fg_pid()
         if not fpid:
             self._toast("No foreground process detected", "warn")
@@ -19690,7 +18902,6 @@ class App(ctk.CTk):
             self._toast(f"Failed to boost: {e}", "warn")
 
     def _quick_trim_all(self):
-        """Trim working set of all non-system processes and track RAM freed"""
         ram_before = psutil.virtual_memory().available
 
         count = 0
@@ -19721,7 +18932,6 @@ class App(ctk.CTk):
         return count
 
     def _quick_throttle_bg(self):
-        """Enable background governor and throttle all background processes"""
         self.bg_gov.enabled = True
         self.chk_gov.select()
         fpid = fg_pid()
@@ -19743,7 +18953,6 @@ class App(ctk.CTk):
         self._log_activity(f"OptiThrottle: Governed {count} background processes", "optimize")
 
     def _quick_kill_heavy(self):
-        """Kill the highest CPU background process with confirmation"""
         fpid = fg_pid()
         heaviest = None
         heaviest_cpu = 0
@@ -19838,7 +19047,6 @@ class App(ctk.CTk):
         self._log_activity(f"OptiGov: Background Governor {state}", "optimize")
 
     def _toggle_game_auto(self):
-        """Toggle automatic game detection and boost"""
         GAME_MODE.enabled = bool(self.chk_game_auto.get())
         state = "ENABLED" if GAME_MODE.enabled else "DISABLED"
         self._toast(f"Auto Game Boost {state}", "ok")
@@ -19846,7 +19054,6 @@ class App(ctk.CTk):
         self._log_activity(f"OptiGame: Auto Game Boost {state}", "optigame")
 
     def _toggle_priority_bal(self):
-        """Toggle dynamic priority balancer"""
         PRIORITY_BALANCER.enabled = bool(self.chk_priority_bal.get())
         state = "ENABLED" if PRIORITY_BALANCER.enabled else "DISABLED"
         self._toast(f"Priority Balancer {state}", "ok")
@@ -19854,7 +19061,6 @@ class App(ctk.CTk):
         self._log_activity(f"OptiBalance: Priority Balancer {state}", "optibalance")
 
     def _clear_ram_standby(self):
-        """Clear RAM standby list"""
         before = RAM_CLEANER.get_available_ram_mb()
         RAM_CLEANER.clear_standby_list()
         after = RAM_CLEANER.get_available_ram_mb()
@@ -19864,20 +19070,17 @@ class App(ctk.CTk):
         self._log_activity(f"OptiRAM: Cleared standby list (+{freed:.0f} MB freed)", "optitrim")
 
     def _optimize_network(self):
-        """Apply network optimizations"""
         NETWORK_OPT.optimize_for_gaming()
         NETWORK_OPT.disable_network_throttling()
         self._toast("Network optimized for gaming", "ok")
         self._append_effect("Network: Nagle disabled, throttling disabled.")
 
     def _disable_visual_fx(self):
-        """Disable Windows visual effects"""
         VISUAL_FX.disable_for_performance()
         self._toast("Visual effects disabled", "ok")
         self._append_effect("Visual effects disabled for performance.")
 
     def _disable_win_key(self):
-        """Toggle Windows key disable"""
         if 'windows_key' in WIN_TWEAKS.tweaks_applied:
             WIN_TWEAKS.disable_windows_key(False)
             self._toast("Windows key ENABLED (reboot may be needed)", "warn")
@@ -19888,7 +19091,6 @@ class App(ctk.CTk):
             self._append_effect("Windows key disabled.")
 
     def _toggle_autostart(self):
-        """Toggle auto-start with Windows"""
         if self.chk_autostart.get():
             AUTO_START.enable()
             self._toast("Auto-start ENABLED", "ok")
@@ -19897,19 +19099,16 @@ class App(ctk.CTk):
             self._toast("Auto-start DISABLED", "ok")
 
     def _toggle_minimize_tray(self):
-        """Toggle minimize to tray setting"""
         self.settings["minimize_to_tray"] = bool(self.chk_minimize_tray.get())
         self._save_config()
         self._toast(f"Minimize to tray: {'ON' if self.settings['minimize_to_tray'] else 'OFF'}", "ok")
 
     def _toggle_confirm_dialogs(self):
-        """Toggle confirmation dialogs"""
         self.settings["confirm_dialogs"] = bool(self.chk_confirm_dialogs.get())
         self._save_config()
         self._toast(f"Confirmation dialogs: {'ON' if self.settings['confirm_dialogs'] else 'OFF'}", "ok")
 
     def _toggle_discord_rpc(self):
-        """Toggle Discord Rich Presence"""
         if self.chk_discord_rpc.get():
             if DISCORD_RPC.enable():
                 self._toast("Discord Rich Presence ENABLED", "ok")
@@ -19921,7 +19120,6 @@ class App(ctk.CTk):
             self._toast("Discord Rich Presence DISABLED", "ok")
 
     def _toggle_fps_overlay_old(self):
-        """Toggle FPS Overlay (legacy - kept for compatibility)"""
         try:
             if hasattr(self, 'overlay_enabled') and self.overlay_enabled.get():
                 self._show_fps_overlay()
@@ -19931,7 +19129,6 @@ class App(ctk.CTk):
             pass
 
     def _toggle_perf_history(self):
-        """Toggle Performance History logging"""
         if self.chk_perf_history.get():
             PERF_HISTORY.start_logging()
             self._toast("Performance History ENABLED", "ok")
@@ -19944,7 +19141,6 @@ class App(ctk.CTk):
                 self._toast("Performance History DISABLED", "ok")
 
     def _toggle_proc_timeline(self):
-        """Toggle Process Timeline monitoring"""
         if self.chk_proc_timeline.get():
             PROC_TIMELINE.start_monitoring()
             self._toast("Process Timeline ENABLED", "ok")
@@ -19953,7 +19149,6 @@ class App(ctk.CTk):
             self._toast("Process Timeline DISABLED", "ok")
 
     def _toggle_alerts(self):
-        """Toggle Alert System"""
         if self.chk_alerts.get():
             ALERT_SYSTEM.start_monitoring(callback=lambda t, m: self._toast(m, "warn"))
             self._toast("Alert System ENABLED", "ok")
@@ -19962,7 +19157,6 @@ class App(ctk.CTk):
             self._toast("Alert System DISABLED", "ok")
 
     def _create_profile(self):
-        """Create a new game profile with current settings"""
         name = self.ent_profile_name.get().strip()
         if not name:
             self._toast("Enter a profile name first", "warn")
@@ -19977,7 +19171,6 @@ class App(ctk.CTk):
             self._toast("Failed to create profile", "warn")
 
     def _apply_profile(self):
-        """Apply selected game profile"""
         name = self.cb_profiles.get()
         if name == "(No profiles)":
             self._toast("No profiles available", "warn")
@@ -19988,7 +19181,6 @@ class App(ctk.CTk):
             self._toast("Failed to apply profile", "warn")
 
     def _delete_profile(self):
-        """Delete selected game profile"""
         name = self.cb_profiles.get()
         if name == "(No profiles)":
             return
@@ -20440,7 +19632,6 @@ class App(ctk.CTk):
                 self._toast(f"Mem priority failed (PID {pid})", "err"); self._log(f"[MemPrio] PID {pid}: {e}")
 
     def _act_io_priority(self):
-        """Set I/O priority on selected processes """
         try:
             sel = self.cb_ioprio.get().strip()
             level = IO_PRIORITY.get(sel, 2)
@@ -20568,7 +19759,6 @@ class App(ctk.CTk):
             self._append_effect(f"Reverted changes on PID {pid}.")
 
     def _act_undo_last(self):
-        """Undo the most recent single action"""
         if not UNDO.stack:
             self._toast("Nothing to undo", "warn")
             return
@@ -20891,35 +20081,30 @@ class App(ctk.CTk):
         self._refresh_table()
 
     def _toggle_PRIORITY_BALANCER(self):
-        """Toggle PRIORITY_BALANCER dynamic priority adjustment"""
         PRIORITY_BALANCER.enabled = not PRIORITY_BALANCER.enabled
         status = "enabled" if PRIORITY_BALANCER.enabled else "disabled"
         self._toast(f"PRIORITY_BALANCER {status}", "ok")
         self._append_effect(f"PRIORITY_BALANCER {status}")
 
     def _toggle_MEM_OPTIMIZER(self):
-        """Toggle MEM_OPTIMIZER memory optimization"""
         MEM_OPTIMIZER.enabled = not MEM_OPTIMIZER.enabled
         status = "enabled" if MEM_OPTIMIZER.enabled else "disabled"
         self._toast(f"MEM_OPTIMIZER {status}", "ok")
         self._append_effect(f"MEM_OPTIMIZER {status}")
 
     def _toggle_CPU_LIMITER(self):
-        """Toggle CPU Limiter core limiting"""
         CPU_LIMITER.enabled = not CPU_LIMITER.enabled
         status = "enabled" if CPU_LIMITER.enabled else "disabled"
         self._toast(f"CPU Limiter {status}", "ok")
         self._append_effect(f"CPU Limiter {status}")
 
     def _toggle_FG_BOOSTER(self):
-        """Toggle Foreground Booster priority elevation"""
         FG_BOOSTER.enabled = not FG_BOOSTER.enabled
         status = "enabled" if FG_BOOSTER.enabled else "disabled"
         self._toast(f"Foreground Booster {status}", "ok")
         self._append_effect(f"Foreground Booster {status}")
 
     def _toggle_POWER_SAVER(self):
-        """Toggle POWER_SAVER power saving"""
         POWER_SAVER.enabled = not POWER_SAVER.enabled
         status = "enabled" if POWER_SAVER.enabled else "disabled"
         self._toast(f"POWER_SAVER {status}", "ok")
@@ -21107,7 +20292,6 @@ class App(ctk.CTk):
         self._append_effect(f"Profile '{name}' applied: {prof['plan']} power plan.")
 
     def _suspend_heavy_backgrounds(self):
-        """Suspend heavy background processes (for Quiet mode)"""
         try:
             fpid = fg_pid()
             for p in psutil.process_iter(["pid", "name", "cpu_percent"]):
@@ -21128,7 +20312,6 @@ class App(ctk.CTk):
             pass
 
     def _quick_boost_fg(self):
-        """Boost foreground app priority"""
         try:
             pid = fg_pid()
             if pid:
@@ -21141,7 +20324,6 @@ class App(ctk.CTk):
             self._log(f"Boost FG error: {e}")
 
     def _quick_trim_all(self):
-        """Trim memory from all processes"""
         trimmed = 0
         for p in psutil.process_iter(['pid', 'name']):
             try:
@@ -21156,7 +20338,6 @@ class App(ctk.CTk):
         return trimmed
 
     def _quick_throttle_bg(self):
-        """Throttle background processes"""
         fg = fg_pid()
         throttled = 0
         for p in psutil.process_iter(['pid', 'name']):
@@ -21172,7 +20353,6 @@ class App(ctk.CTk):
         return throttled
 
     def _quick_kill_heavy(self):
-        """Kill the heaviest non-protected process"""
         try:
             procs = [(p.info['pid'], p.info['name'], p.info.get('memory_info').rss if p.info.get('memory_info') else 0)
                      for p in psutil.process_iter(['pid', 'name', 'memory_info'])
@@ -21186,7 +20366,6 @@ class App(ctk.CTk):
             self._log(f"Kill error: {e}")
 
     def _one_click_boost(self):
-        """Run all optimizations at once with animation and RAM tracking"""
         self.btn_boost_all.configure(state="disabled", text="⏳ Optimizing...")
         if hasattr(self, 'lbl_boost_status'):
             self.lbl_boost_status.configure(text="Starting boost...")
@@ -21237,7 +20416,6 @@ class App(ctk.CTk):
         self._log_activity(f"One-click boost: freed {ram_freed_mb:.0f} MB RAM", "boost")
 
     def _update_session_stats(self):
-        """Update session statistics display on dashboard"""
         if self._stop:
             return
 
@@ -21265,7 +20443,6 @@ class App(ctk.CTk):
         self.after(5000, self._update_session_stats)
 
     def _toggle_theme(self):
-        """Toggle between dark and light mode"""
         current = ctk.get_appearance_mode()
         new_mode = "Light" if current == "Dark" else "Dark"
         ctk.set_appearance_mode(new_mode)
@@ -21274,7 +20451,6 @@ class App(ctk.CTk):
         self._log(f"Theme changed to {new_mode}")
 
     def _export_benchmark(self):
-        """Export benchmark results to file"""
         try:
             result = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -21308,7 +20484,6 @@ class App(ctk.CTk):
     }
 
     def _set_power_plan(self, plan_type: str):
-        """Set Windows power plan"""
         try:
             guid = self.POWER_PLANS.get(plan_type)
             if guid:
@@ -21326,7 +20501,6 @@ class App(ctk.CTk):
             self._log(f"Power plan error: {e}")
 
     def _get_current_power_plan(self):
-        """Get current power plan name"""
         try:
             result = subprocess.run(
                 ["powercfg", "/getactivescheme"],
@@ -21337,7 +20511,6 @@ class App(ctk.CTk):
             return "Unknown"
 
     def _get_disk_usage(self):
-        """Get disk usage for all drives"""
         drives = []
         for partition in psutil.disk_partitions():
             try:
@@ -21354,7 +20527,6 @@ class App(ctk.CTk):
         return drives
 
     def _run_speed_test(self):
-        """Quick network speed test using download/upload test"""
         import urllib.request
         import time as t
 
@@ -21380,7 +20552,6 @@ class App(ctk.CTk):
             return 0
 
     def _refresh_disk_cards(self):
-        """Populate disk usage cards"""
         if not hasattr(self, 'disk_cards_frame'):
             return
 
@@ -21422,7 +20593,6 @@ class App(ctk.CTk):
     }
 
     def _check_games(self):
-        """Check if a game is running and auto-switch to Gaming profile"""
         if not self.settings.get("auto_game_detect", False):
             return
 
@@ -21436,7 +20606,6 @@ class App(ctk.CTk):
             except: pass
 
     def _init_usage_stats(self):
-        """Initialize usage statistics tracking"""
         self.usage_history = {
             "cpu": deque(maxlen=3600),
             "ram": deque(maxlen=3600),
@@ -21446,7 +20615,6 @@ class App(ctk.CTk):
         self._load_process_history()
 
     def _load_process_history(self):
-        """Load process history from disk"""
         try:
             if os.path.exists(USAGE_HIST_PATH):
                 with open(USAGE_HIST_PATH, "r") as f:
@@ -21456,14 +20624,12 @@ class App(ctk.CTk):
         except: pass
 
     def _save_process_history(self):
-        """Save process history to disk"""
         try:
             with open(USAGE_HIST_PATH, "w") as f:
                 json.dump(self.process_history[-1440:], f)
         except: pass
 
     def _record_usage(self):
-        """Record current usage for statistics"""
         if hasattr(self, 'usage_history'):
             self.usage_history["cpu"].append(psutil.cpu_percent())
             self.usage_history["ram"].append(psutil.virtual_memory().percent)
@@ -21480,14 +20646,12 @@ class App(ctk.CTk):
                 self._save_process_history()
 
     def _toggle_game_detect(self):
-        """Toggle game detection feature"""
         enabled = bool(self.chk_game_detect.get())
         self.settings["auto_game_detect"] = enabled
         self._save_config()
         self._log(f"Game detection {'enabled' if enabled else 'disabled'}")
 
     def _loop_features(self):
-        """Background loop for game detection, usage stats, PRIORITY_BALANCER, POWER_SAVER, and NEW enhanced features"""
         iteration = 0
         while True:
             try:
@@ -21541,7 +20705,6 @@ class App(ctk.CTk):
     }
 
     def _refresh_startup(self):
-        """Scan startup programs from registry and startup folder"""
         import winreg
 
         if not hasattr(self, 'tree_start') or self.tree_start is None:
@@ -21616,7 +20779,6 @@ class App(ctk.CTk):
         self._log(f"Scanned {len(items)} startup items")
 
     def _toggle_startup(self, enable: bool):
-        """Enable or disable selected startup items"""
         import winreg
 
         if not hasattr(self, 'tree_start') or self.tree_start is None:
@@ -21656,7 +20818,6 @@ class App(ctk.CTk):
             self._toast("No items were modified", "warn")
 
     def _open_startup_folder(self):
-        """Open Windows startup folder"""
         startup_folder = os.path.join(os.environ.get("APPDATA", ""),
                                        r"Microsoft\Windows\Start Menu\Programs\Startup")
         try:
@@ -21665,7 +20826,6 @@ class App(ctk.CTk):
             self._log(f"Could not open startup folder: {e}")
 
     def _init_tray(self):
-        """Initialize system tray icon"""
         if pystray is None or Image is None:
             self._log("System tray not available (pystray or PIL missing)")
             return
@@ -21703,7 +20863,6 @@ class App(ctk.CTk):
             self._log(f"Could not create tray icon: {e}")
 
     def _on_close(self):
-        """Minimize to tray instead of closing"""
         if self.tray_icon:
             self.withdraw()
             self._log("Minimized to system tray")
@@ -21711,19 +20870,16 @@ class App(ctk.CTk):
             self._quit_app()
 
     def _show_window(self, icon=None, item=None):
-        """Restore window from tray"""
         self.deiconify()
         self.lift()
         self.focus_force()
 
     def _tray_boost(self, icon=None, item=None):
-        """Quick boost from tray"""
         self._quick_trim_all()
         self._quick_throttle_bg()
         self._quick_boost_fg()
 
     def _quit_app(self, icon=None, item=None):
-        """Fully exit the application"""
         if self.tray_icon:
             try:
                 self.tray_icon.stop()
@@ -21734,10 +20890,11 @@ class App(ctk.CTk):
                 self.overlay.destroy()
             except:
                 pass
+        
+        self._save_config()
         self.destroy()
 
     def _toggle_overlay(self):
-        """Toggle the floating overlay window"""
         if hasattr(self, 'overlay') and self.overlay and self.overlay.winfo_exists():
             self.overlay.destroy()
             self.overlay = None
@@ -21747,7 +20904,6 @@ class App(ctk.CTk):
             self._log("Overlay shown")
 
     def _toggle_auto_game(self):
-        """Toggle auto game detection setting"""
         enabled = self.chk_auto_game.get()
         self.settings["auto_game_detect"] = bool(enabled)
         self._save_config()
@@ -21756,7 +20912,6 @@ class App(ctk.CTk):
         self._toast(f"Auto game detection {state}", "ok")
 
     def _create_overlay(self):
-        """Create floating overlay window"""
         self.overlay = ctk.CTkToplevel(self)
         self.overlay.title("")
         self.overlay.geometry("180x80+20+20")
@@ -21798,18 +20953,15 @@ class App(ctk.CTk):
         self._update_overlay()
 
     def _overlay_start_drag(self, event):
-        """Start dragging overlay"""
         self.overlay._drag_data["x"] = event.x
         self.overlay._drag_data["y"] = event.y
 
     def _overlay_drag(self, event):
-        """Drag overlay window"""
         x = self.overlay.winfo_x() + (event.x - self.overlay._drag_data["x"])
         y = self.overlay.winfo_y() + (event.y - self.overlay._drag_data["y"])
         self.overlay.geometry(f"+{x}+{y}")
 
     def _update_overlay(self):
-        """Update overlay stats"""
         if not hasattr(self, 'overlay') or not self.overlay or not self.overlay.winfo_exists():
             return
 
@@ -21949,7 +21101,6 @@ class App(ctk.CTk):
         self.btn_scan.configure(state="normal")
 
     def _fill_sysinfo(self, parent):
-        """System Information tab - hardware and OS details"""
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         scroll.pack(fill="both", expand=True)
 
@@ -21973,7 +21124,6 @@ class App(ctk.CTk):
         self._refresh_sysinfo()
 
     def _refresh_sysinfo(self):
-        """Refresh system information display"""
         for widget in self.sysinfo_container.winfo_children():
             widget.destroy()
 
@@ -22049,7 +21199,6 @@ class App(ctk.CTk):
                     f"{disk['free_gb']:.1f} GB free / {disk['total_gb']:.1f} GB ({disk['percent']:.0f}% used)", base)
 
     def _copy_sysinfo(self):
-        """Copy system info to clipboard"""
         info = SYSINFO.get_all()
         text = "=== OptiCores System Report ===\n\n"
         text += f"[CPU]\nName: {info['cpu']['name']}\nCores: {info['cpu']['physical_cores']}P/{info['cpu']['logical_cores']}L\n\n"
@@ -22064,7 +21213,6 @@ class App(ctk.CTk):
             self._toast("Failed to copy", "error")
 
     def _fill_security(self, parent):
-        """Security Scanner tab - detect threats and resource abuse"""
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         scroll.pack(fill="both", expand=True)
 
@@ -22101,7 +21249,6 @@ class App(ctk.CTk):
                     text_color="#9CA3AF", font=ctk.CTkFont(size=13)).pack(padx=20, pady=40)
 
     def _run_security_scan(self):
-        """Run security scan and display results"""
         self.btn_security_scan.configure(state="disabled")
         self.security_status.configure(text="Scanning...")
         self.update()
@@ -22180,7 +21327,6 @@ class App(ctk.CTk):
         self.btn_security_scan.configure(state="normal")
 
     def _kill_threat(self, pid):
-        """Kill a suspicious process"""
         try:
             p = psutil.Process(pid)
             p.terminate()
@@ -22190,7 +21336,6 @@ class App(ctk.CTk):
             self._toast(f"Failed to kill process: {e}", "error")
 
     def _fill_power(self, parent):
-        """Power Management tab - power plans and battery"""
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         scroll.pack(fill="both", expand=True)
 
@@ -22301,7 +21446,6 @@ class App(ctk.CTk):
                         font=ctk.CTkFont(size=12)).pack(side="left", padx=20)
 
     def _set_power_plan(self, plan_key):
-        """Set power plan"""
         if POWER_MGR.set_power_plan(plan_key):
             plan_names = {'balanced': '⚖️ Balanced', 'high_performance': '🚀 High Performance',
                          'power_saver': '🔋 Power Saver', 'ultimate': '⚡ Ultimate Performance'}
@@ -22312,7 +21456,6 @@ class App(ctk.CTk):
             self._toast("Failed to change power plan (requires admin)", "error")
 
     def _fill_scheduler(self, parent):
-        """Task Scheduler tab - schedule automated tasks"""
         scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         scroll.pack(fill="both", expand=True)
 
@@ -22371,7 +21514,6 @@ class App(ctk.CTk):
         self._refresh_task_list()
 
     def _add_scheduled_task(self):
-        """Add a new scheduled task"""
         name = self.ent_task_name.get().strip()
         action = self.cb_task_action.get()
         try:
@@ -22390,7 +21532,6 @@ class App(ctk.CTk):
         self._toast(f"Task '{name}' added", "ok")
 
     def _refresh_task_list(self):
-        """Refresh the task list display"""
         for widget in self.task_list_container.winfo_children():
             widget.destroy()
 
@@ -22431,18 +21572,15 @@ class App(ctk.CTk):
                          command=lambda t=task: self._delete_scheduled_task(t)).pack(side="left", padx=4)
 
     def _toggle_scheduled_task(self, task):
-        """Toggle a scheduled task on/off"""
         TASK_SCHEDULER.toggle_task(task.get('id'), not task.get('enabled'))
         self._refresh_task_list()
 
     def _delete_scheduled_task(self, task):
-        """Delete a scheduled task"""
         TASK_SCHEDULER.remove_task(task.get('id'))
         self._refresh_task_list()
         self._toast("Task deleted", "ok")
 
     def _run_scheduled_action(self, action):
-        """Execute a scheduled action"""
         if action == "trim_ram":
             self._quick_trim_all()
         elif action == "boost_foreground":
@@ -22459,7 +21597,6 @@ class App(ctk.CTk):
         return super().destroy()
 
     def _fill_ai_assistant(self, frame):
-        """AI Assistant tab - Modern AI app style interface"""
         self._ai_scroll = ctk.CTkScrollableFrame(frame, fg_color="transparent")
         self._ai_scroll.pack(fill="both", expand=True)
 
@@ -22833,7 +21970,6 @@ class App(ctk.CTk):
                         text_color="#9CA3AF").pack(side="left", padx=(6, 0))
 
     def _build_ai_insights(self):
-        """Build chat-style AI insights with personality"""
         for w in self._ai_insights_container.winfo_children():
             w.destroy()
 
@@ -22982,7 +22118,6 @@ class App(ctk.CTk):
                              font=ctk.CTkFont(size=11, weight="bold")).pack()
 
     def _ai_quick_optimize(self):
-        """Quick optimize action"""
         PRIORITY_BALANCER.enabled = True
         MEM_OPTIMIZER.enabled = True
         self._toast("🚀 Optimization enabled!", "ok")
@@ -22990,35 +22125,30 @@ class App(ctk.CTk):
         self._refresh_ai_modern()
 
     def _ai_quick_ram(self):
-        """Quick RAM free action"""
         RAM_CLEANER.clear_standby_list()
         self._toast("💾 Memory cleaned!", "ok")
         self._log_activity("AI: Memory cleanup executed", "ai")
         self._refresh_ai_modern()
 
     def _ai_quick_boost(self):
-        """Quick boost action"""
         FG_BOOSTER.enabled = True
         self._toast("⚡ Performance boost active!", "ok")
         self._log_activity("AI: Performance boost enabled", "ai")
         self._refresh_ai_modern()
 
     def _ai_quick_scan(self):
-        """Quick scan action"""
         AI_OPTIMIZER.refresh()
         SMART_PROCESS_MGR.take_snapshot()
         self._toast("🔍 Deep scan complete!", "ok")
         self._refresh_ai_modern()
 
     def _ai_quick_game(self):
-        """Quick game mode action"""
         GAME_MODE.enabled = True
         self._toast("🎮 Game Mode activated!", "ok")
         self._log_activity("AI: Game Mode enabled", "ai")
         self._refresh_ai_modern()
 
     def _toggle_ai_autopilot(self):
-        """Toggle AI Auto-Pilot mode"""
         self._ai_autopilot = not self._ai_autopilot
         if self._ai_autopilot:
             PRIORITY_BALANCER.enabled = True
@@ -23033,7 +22163,6 @@ class App(ctk.CTk):
             self._log_activity("AI Auto-Pilot disabled", "ai")
 
     def _ai_lower_priority(self, proc_name):
-        """Lower priority of a heavy process"""
         try:
             for proc in psutil.process_iter(['name', 'pid']):
                 if proc.info['name'] == proc_name:
@@ -23049,7 +22178,6 @@ class App(ctk.CTk):
             self._toast(f"Error: {str(e)}", "error")
 
     def _refresh_ai_modern(self):
-        """Refresh modern AI assistant"""
         AI_OPTIMIZER.refresh()
         SMART_PROCESS_MGR.take_snapshot()
         self._build_ai_insights()
@@ -23058,7 +22186,6 @@ class App(ctk.CTk):
         self._toast("AI refreshed", "ok")
 
     def _build_predicted_questions(self):
-        """Build predicted questions UI based on system state"""
         for w in self._predicted_questions_container.winfo_children():
             w.destroy()
 
@@ -23084,7 +22211,6 @@ class App(ctk.CTk):
             chip.pack(side="left", padx=4, pady=2)
 
     def _build_questions_list(self, category=None):
-        """Build list of all questions filtered by category"""
         for w in self._questions_list_container.winfo_children():
             w.destroy()
 
@@ -23107,7 +22233,6 @@ class App(ctk.CTk):
             q_btn.pack(fill="x", pady=2)
 
     def _filter_questions_by_category(self, category):
-        """Filter questions list by category and update button states"""
         self._selected_category = category
 
         for cat_key, btn in self._cat_buttons.items():
@@ -23119,7 +22244,6 @@ class App(ctk.CTk):
         self._build_questions_list(category)
 
     def _select_question(self, question):
-        """Handle question selection and get AI response"""
         AI_QUESTION_MANAGER.record_selection(question)
 
         try:
@@ -23133,7 +22257,6 @@ class App(ctk.CTk):
         self._display_ai_chat(question, response)
 
     def _generate_ai_response(self, question):
-        """Generate AI response based on question and system state"""
         q_lower = question.lower()
 
         cpu = psutil.cpu_percent()
@@ -23231,7 +22354,6 @@ class App(ctk.CTk):
             }
 
     def _display_ai_chat(self, question, response):
-        """Display AI chat conversation in the container"""
         for widget in self._ai_chat_container.winfo_children():
             widget.destroy()
 
@@ -23332,7 +22454,6 @@ class App(ctk.CTk):
                          command=self._ai_quick_ram).pack(side="left", padx=(0, 8))
 
     def _apply_ai_suggestion(self, suggestion):
-        """Apply an AI suggestion"""
         try:
             success = AI_OPTIMIZER.apply_suggestion(suggestion)
             if success:
