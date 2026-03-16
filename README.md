@@ -77,7 +77,7 @@ Your built-in PC guru. Ask questions in natural language about how to optimize y
 ## Built With
 
 *   **Python 3** - The core logic
-*   **CustomTkinter** - The modern, dark-themed UI
+*   **CustomTkinter** - UI
 *   **Psutil** - System telemetry and process management
 *   **PyInstaller and Inno Setup** - App packaging
 
