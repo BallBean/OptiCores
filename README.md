@@ -68,7 +68,7 @@ Your built-in PC guru. Ask questions in natural language about how to optimize y
 
 ## Installation
 
-1. Download the `OptiCores_Setup.exe` from the [Releases]([#](https://github.com/BallBean/OptiCores/releases/tag/OptiCore)) page.
+1. Download the `OptiCores_Setup.exe` from the [Releases](https://github.com/BallBean/OptiCores/releases/tag/OptiCore) page.
 2. Run the installer and follow the Setup Wizard.
 3. Launch OptiCores! 
 
