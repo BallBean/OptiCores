@@ -1,107 +1,87 @@
 # OptiCores
 
-Windows process optimizer & live dashboard (Python + customtkinter)
+**OptiCores** is the Ultimate CPU and Priority Optimizer built for Windows. It provides a suite of advanced tools to manage background tasks, free up RAM, optimize gaming performance, and keep your system running at peak efficiency through a beautifully designed, modern UI.
 
-OptiCores เป็นแอปสำหรับ Windows ที่ช่วยจัดการและจูนประสิทธิภาพโปรเซสแบบ real-time  
-เน้นใช้งานง่าย เห็นภาพ และมีตัวช่วยปรับแต่งแบบปลอดภัย
+![OptiCores Screenshot](https://via.placeholder.com/800x450.png?text=OptiCores+Dashboard)
 
-> **รองรับเฉพาะ Windows 10/11** และแนะนำให้รันในโหมด **Run as Administrator**  
-> เพื่อให้ทุกฟีเจอร์ทำงานได้ครบ เช่น ปรับ Priority / Affinity / Power plan
+## Key Features
 
----
+OptiCores is divided into specialized modules accessible from the sidebar. Here is an overview of what each tab can do for your system:
 
-## Features
+### 1. Dashboard
+Your command center. View real-time system metrics (CPU, RAM, Disk, Network) in sleek, animated graphs. Access quick actions like "Optimize All" and "Game Mode" right from the top bar.
 
-- **Process Dashboard**
-  - ตารางแสดงทุกโปรเซส: `PID`, ชื่อ, CPU%, RAM, Flags (เช่น leak / spike), และ Role (Foreground / Background)
-  - ช่องค้นหาโปรเซสตามชื่อหรือ PID
-  - ปรับ sort ได้ตาม `CPU / Memory / PID / Name`
+### 2. Processes
+A detailed process manager. View every running application, its CPU/RAM usage, and priority. Right-click to change priorities, restrict CPU affinity, or terminate unresponsive tasks.
 
-- **Optimize Tab**
-  - ปรับ **CPU Priority** (Idle → Realtime)
-  - ปรับ **Memory Priority** (VeryLow–High)
-  - สั่ง **Trim RAM** (ใช้ `EmptyWorkingSet`) เพื่อลด working set ของโปรเซส
-  - ตั้งค่า **CPU Affinity**:
-  - สั่ง **Suspend / Resume / Kill** โปรเซส
-  - ปุ่ม **Revert Changes** เพื่อย้อนกลับ Priority / Memory priority / Affinity ที่ OptiCores เคยเปลี่ยนให้
-  - แสดง **Effects Panel** วัดก่อน-หลัง (ΔCPU, ΔRAM) ทุกครั้งที่กด action
+### 3. Active
+Focuses only on your currently active foreground applications and their child processes, allowing you to monitor exactly what is taking up resources right now.
 
-- **Game Mode & Background Governor**
-  - **Game Mode**
-    - สลับเป็น High Performance power plan
-    - Boost foreground app (เพิ่ม CPU priority + memory priority)
-  - **Background Governor**
-    - ลด Priority / Memory priority ของ background apps
-    - เปิด power throttling แบบ Eco สำหรับโปรเซสบางตัว
-    - ใช้ Windows Job Object (ถ้ามี `win32job`)
+### 4. Activity
+A real-time log of all system changes, optimization actions, and process terminations. Track exactly what OptiCores is doing behind the scenes.
 
-- **Profiles**
-  - `Gaming` เน้น High Performance, เปิด Game Mode + Governor
-  - `Creator` เน้นงานตัดต่อ/render, Balanced plan + Governor
-  - `Everyday` ใช้งานทั่วไป, Balanced plan, ไม่บีบ background เยอะ
+### 5. Booster
+The performance acceleration hub. Toggle core features like:
+*   **OptiBalance:** Dynamically re-balances CPU priority.
+*   **Game Mode:** Halts background services to give games 100% of your resources.
+*   **Memory Optimizer:** Trims unused RAM from idle processes.
+*   **Foreground Booster:** Gives maximum priority to your active window.
 
-- **Startup Manager**
-  - อ่านค่า startup จาก:
-    - Registry: `HKCU/HKLM\Software\Microsoft\Windows\CurrentVersion\Run`
-    - User / Common Startup folder (`.lnk`)
-  - Enable / Disable ได้แบบ reversible:
-    - Registry: backup ไว้ที่ `Software\OptiCores\StartupBackup`
-    - Shortcut: ย้ายไปโฟลเดอร์ `Disabled by OptiCores`
+### 6. Tools
+A collection of advanced system utilities including quick-access shortcuts to Windows native tools, power plan management, and service configurations.
 
-- **Insights (Live Graphs)**
-  - กราฟ Live: CPU / RAM / GPU (%)
-  - ใช้ `matplotlib` + `GPUtil` (ถ้ามี GPU ที่รองรับ)
+### 7. Network
+Monitor real-time download and upload speeds. See exactly which applications are consuming your bandwidth.
 
-- **Rules Automation (No typing, Jigsaw style)**
-  - สร้าง rule แบบคลิกเลือก:
-    - Pattern (เช่น `chrome.exe`, `updater`, `launcher`, ฯลฯ)
-    - Scope: `Always / Foreground / Background`
-    - Metric: CPU > X%
-    - Action: `lower_priority`, `trim`, `eco_throttle`, `kill`
-  - มี `DEFAULT_RULES` ตัวอย่าง เช่น:
-    - ลด Priority ของ `chrome.exe` ถ้าใช้ CPU สูงใน background
-    - throttle processes ที่ชื่อมีคำว่า `updater`
+### 8. Storage
+Analyze disk usage across all your drives. View total, used, and free space with visual progress bars.
 
-- **Advisor**
-  - สแกนระบบแล้วเสนอคำแนะนำเป็นแถวๆ:
-    - BG CPU สูงเกิน threshold
-    - ใช้ RAM เยอะเกิน threshold
-    - แนวโน้ม memory leak จาก HealthWatcher
-  - กด Apply เฉพาะรายการที่เลือก หรือ Apply all safe ได้
+### 9. Cleaner
+A built-in junk cleaner. Scan for temporary files, cache, and system logs, and securely delete them to free up valuable storage space.
 
-- **Settings**
-  - ตั้งค่า Threshold:
-    - Background CPU high (%)
-    - Heavy RAM (MB)
-  - ตั้งค่า **Refresh interval** (1–10 วินาที)
-  - ตั้งค่า **Custom whitelist** (ชื่อโปรเซสที่ไม่อยากให้แอปไปยุ่ง)
+### 10. Benchmark
+Test your system's performance. Run quick CPU multi-core and single-core stress tests to see how your computer handles heavy workloads.
 
-- **Reports & Logs**
-  - Export snapshot ของตาราง process เป็น `.csv`
-  - Export effects history เป็น `.json`
-  - Activity log ในตัวแอป
+### 11. SystemInfo
+Detailed hardware specifications. View information about your CPU topology (P-Cores vs E-Cores), RAM, Motherboard, and Operating System version.
 
----
+### 12. Power
+Advanced power management. Instantly switch between Windows Power Plans (Power Saver, Balanced, High Performance, Ultimate Performance) to heavily optimize for battery or speed.
 
-## Tech Stack
+### 13. Overlay
+Configure the OptiCores floating overlay. Pin a tiny, transparent system monitor to your screen so you can track FPS, CPU, and RAM while playing games.
 
-- Python
-- [customtkinter](https://github.com/TomSchimansky/CustomTkinter) สำหรับ UI สไตล์ modern
-- `psutil` สำหรับอ่านข้อมูลโปรเซส/ระบบ
-- `matplotlib` สำหรับกราฟ CPU/RAM/GPU
-- `GPUtil` (ถ้ามี) สำหรับอ่าน GPU load
-- `pywin32` (`win32api`, `win32gui`, `win32process`, `win32con`, `win32job`, `winreg`)
-- `ctypes` + Windows API:
-  - `SetProcessInformation` (memory priority, power throttling)
-  - `EmptyWorkingSet` (trim working set)
+### 14. Optimizer
+Deep-level system optimizations. Apply physical-core-only affinities, toggle SysMain (Superfetch), and prioritize background I/O tasks.
+
+### 15. Rules
+Create automated conditions for your applications. Prevent specific programs from ever starting, or permanently force your favorite game to always launch with "High" priority.
+
+### 16. Startup
+Take control of your boot times. Enable, disable, or delay programs that normally start when Windows logs in.
+
+### 17. Insights
+Deep analytics and historical data. View how your system resource usage has trended over the past hours or days.
+
+### 18. AIAssistant
+Your built-in PC guru. Ask questions in natural language about how to optimize your PC, or get explanations on what specific OptiCores features do.
+
+*(Note: There is also a **Settings** tab to customize the app theme, refresh rates, custom whitelists, and backup/restore your configuration).*
+
+## Installation
+
+1. Download the latest `OptiCores_Setup.exe` from the [Releases](#) page.
+2. Run the installer and follow the Setup Wizard.
+3. Launch OptiCores! 
+
+*Note: OptiCores requires Administrator privileges to modify system priorities and power plans.*
+
+## Built With
+
+*   **Python 3** - The core logic
+*   **CustomTkinter** - The modern, dark-themed UI
+*   **Psutil** - System telemetry and process management
+*   **PyInstaller and Inno Setup** - App packaging
 
 ---
-
-## 🔧 Requirements
-
-- Windows 10 / 11 (64-bit)
-- Python 3.10+ (แนะนำให้ใช้ 64-bit)
-- Packages (ผ่าน `pip`):
-
-```bash
-pip install psutil customtkinter GPUtil Pillow matplotlib pywin32
+*Disclaimer: Modifying deep system settings and process priorities can cause system instability if misconfigured. Use Auto-Pilot for safe, recommended settings.*
